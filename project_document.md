@@ -1,61 +1,21 @@
 # Set&Sit - Project Snapshot
 
-- Generated: 2026-10-23 00:45 EDT
-- Branch: main
-- Snapshot commit: c12189a
-- Version: 1.0.0+1
+## 1. Project Overview & Clinical Foundation
 
-## 1. What Changed Since Last Snapshot
-Cleaned up temporary debug UI indicators and finalized native primitive key persistence. Removed the debug banner text from the Home Screen finish clock dial header and verified seamless real-time persistence callbacks across settings and system back navigation without debug toast/snackbars.
+Set&Sit is a clinical meditation and mindfulness application built with Flutter. It provides structured, time-bound meditation sessions ranging from 1 to 90 minutes with high-resolution acoustic bells, dynamically balanced silence intervals, and voice guidance personas. Sessions are structured around a 16-Segment Clinical Meditation Taxonomy ($S01$–$S16$) across four clinical archetypes (Focused Calm, Trauma-Sensitive Grounding, Open Awareness / Insight, and Metta / Compassion), along with custom practice configuration.
 
-- **Changed:**
-  - `lib/screens/configuration_screen.dart`: Removed temporary debug header label `(Default: 20m)` from inside the circular dial, restoring clean production typography (`Practice Ends At`).
-  - `lib/screens/settings_screen.dart`: Verified removal of temporary debug SnackBars while preserving immediate keystroke validation, slider `onChangeEnd` callbacks, and instant persistence.
-- **Metrics:**
-  - Automated test suite: 55 unit and widget tests passing (100% pass rate).
-  - Static analyzer (`flutter analyze`): 0 issues found.
+## 2. Architecture Overview
 
-## 2. Snapshot History
-| Date | Commit | Summary |
-|---|---|---|
-| 2026-10-23 | c12189a | Removed temporary debug banners, finalized direct primitive key persistence |
-| 2026-10-22 | c5cfc3f | Hardened direct primitive key persistence, release ProGuard config, disabled auto-backup |
-| 2026-10-22 | d57f660 | Integrated Voice Management screen, VoiceConfig persistence, test suites, and Gradle memory tuning |
-| 2026-10-22 | 33d385e | Added Practice Delay countdown, calibrated exact-start timing, fixed S16/bell overlap, unified Settings Defaults bubble |
-| 2026-10-22 | 7e2a201 | Initial project architectural baseline snapshot |
-
-## 3. Overview
-Set&Sit is a clinical meditation and mindfulness application built with Flutter. It provides structured, time-bound meditation sessions ranging from 1 to 90 minutes with high-resolution acoustic bells, dynamically balanced silence intervals, and voice guidance personas. Sessions are structured around a 16-Segment Clinical Meditation Taxonomy ($S01$–$S16$) across four clinical archetypes (Focused Calm, Trauma-Informed Regulation, Open Awareness / Insight, and Metta / Compassion), along with custom practice configuration. The application operates entirely offline on-device without telemetry, user accounts, or external network dependencies.
-
-## 4. Tech Stack & Dependencies
-
-### Core Framework & Toolchain
-- **Framework:** Flutter (Channel stable, 3.47.7)
-- **Language:** Dart SDK `^3.13.5`
-- **Target Platforms:** Android (minSdk 21, targetSdk 36), iOS, Linux Desktop, macOS, Windows, Web
-
-### Runtime Dependencies
-| Package | Version | Purpose |
-|---|---|---|
-| `flutter` | SDK | Core UI framework and Material 3 design widgets |
-| `audioplayers` | `^6.8.1` | Audio playback engine for meditation bells and spoken voice segments |
-| `shared_preferences` | `^2.5.6` | Persistent key-value storage for settings, custom practices, and voice selections |
-| `intl` | `^0.20.3` | Date, clock time, and duration formatting utilities |
-| `wakelock_plus` | `^1.8.1` | Keeps the screen active during ongoing meditation sessions |
-| `cupertino_icons` | `^1.0.8` | iOS-styled iconography |
-
-### Dev Dependencies
-| Package | Version | Purpose |
-|---|---|---|
-| `flutter_test` | SDK | Unit and widget test framework |
-| `audioplayers_platform_interface` | `^7.2.0` | Mock platform interface for audio player testing |
-| `flutter_lints` | `^6.0.0` | Recommended code analysis rules and lints |
-
-## 5. Architecture & Project Structure
-
-### High-Level Architectural Pattern
+### State Management & Navigation
 State is centrally lifted into `RootControllerScreen` (`lib/main.dart`) using vanilla Flutter state management (`StatefulWidget`). Navigation between views is managed via an in-memory stack enum (`AppScreen`) and system-level back gesture handling via `PopScope`.
 
+### Persistence Engine
+Handled by `PreferencesService` (`lib/services/preferences_service.dart`) using `shared_preferences`.
+Primitive settings are written directly to native disk storage using atomic keys, while multi-object collections are stored as isolated JSON strings.
+
+## 3. Technical Architecture
+
+### High-Level Components
 ```
 lib/
 ├── data/
@@ -82,7 +42,8 @@ lib/
     └── app_theme.dart                 # Botanical minimalist color palette & styles
 ```
 
-## 6. Features & Status
+## 4. Features & Status
+
 | Feature | Status | Primary Files | Description |
 |---|---|---|---|
 | Wall-Clock Finish Time Dial | Complete | `configuration_screen.dart`, `clock_time_picker_dialog.dart` | Radial finish time picker calculating session duration from target time |
@@ -94,24 +55,56 @@ lib/
 | Dedicated Primitive Persistence | Complete | `preferences_service.dart` | Atomic, non-corruptible disk persistence directly to native SharedPreferences |
 | Dual-Player Closing Overlap | Complete | `practice_screen.dart`, `session_queue_engine.dart` | Overlaps final voice guidance over decaying acoustic bell at $+2.5\text{s}$ |
 
-## 7. Data, Services & Integrations
-- **Data Models:** `AudioSegment`, `SessionItem`, `PracticeConfig`, `VoiceConfig`, `SavedState`.
-- **Local Storage:** `shared_preferences` storing primitive settings under atomic keys, plus JSON collections for custom practices (`set_and_sit_practices`) and voice inclusion settings (`set_and_sit_voices`).
-- **External Network / APIs:** None. Fully offline architecture.
-- **Audio Assets:** 480 voice MP3s across Kia and Grace personas; 10 acoustic bell OGG files.
+## 5. Dependencies & Technology Stack
 
-## 8. Platform & Configuration Details
-- **Android:**
-  - `applicationId`: `com.example.setandsit`
-  - `minSdk`: 21, `targetSdk`: 36, Java 17 compile target.
-  - Permissions: `WAKE_LOCK`, `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_MEDIA_PLAYBACK`.
-  - Auto-Backup disabled (`allowBackup="false"`, `fullBackupOnly="false"`).
-  - ProGuard rules: `proguard-rules.pro` applied with `isMinifyEnabled = false`.
-- **iOS:**
-  - Deployment target: iOS 12.0+
-  - Background audio & wakelock capabilities configured.
+### Core Framework & Toolchain
+- **Framework:** Flutter (Channel stable, 3.47.7)
+- **Language:** Dart SDK `^3.13.5`
+- **Target Platforms:** Android (minSdk 21, targetSdk 36), iOS, Linux Desktop, macOS, Windows, Web
 
-## 9. Build, Run & Release
+### Runtime Dependencies
+| Package | Version | Purpose |
+|---|---|---|
+| `flutter` | SDK | Core UI framework and Material 3 design widgets |
+| `audioplayers` | `^6.8.1` | Audio playback engine for meditation bells and spoken voice segments |
+| `shared_preferences` | `^2.5.6` | Persistent key-value storage for settings, custom practices, and voice selections |
+| `intl` | `^0.20.3` | Date, clock time, and duration formatting utilities |
+| `wakelock_plus` | `^1.8.1` | Keeps the screen active during ongoing meditation sessions |
+| `cupertino_icons` | `^1.0.8` | iOS-styled iconography |
+
+### Dev Dependencies
+| Package | Version | Purpose |
+|---|---|---|
+| `flutter_test` | SDK | Unit and widget test framework |
+| `audioplayers_platform_interface` | `^7.2.0` | Mock platform interface for audio player testing |
+| `flutter_lints` | `^6.0.0` | Recommended code analysis rules and lints |
+
+## 6. Testing & Quality
+
+- **Test Inventory:**
+  - `test/timeline_engine_test.dart`: 3-Zone silence distribution math, test-mode bypass, and pruning validation.
+  - `test/preferences_test.dart`: SharedPreferences direct primitive key read/write verification across restarts.
+  - `test/manage_practices_test.dart`: Practice creation, segment editing, and selection persistence.
+  - `test/manage_voices_test.dart`: Voice persona filtering, audition playback, and inclusion logic.
+  - `test/widget_test.dart`: Root controller smoke test and navigation verification.
+- **Coverage:** 55 tests passing across all critical business logic and UI integration paths.
+- **Static Analysis:** `flutter analyze` reports 0 issues.
+
+## 7. Platform Details
+
+### Android
+- `applicationId`: `com.example.setandsit`
+- `minSdk`: 21, `targetSdk`: 36, Java 17 compile target.
+- Permissions: `WAKE_LOCK`, `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_MEDIA_PLAYBACK`.
+- Auto-Backup disabled (`allowBackup="false"`, `fullBackupOnly="false"`).
+- ProGuard rules: `proguard-rules.pro` applied with `isMinifyEnabled = false`.
+
+### iOS
+- Deployment target: iOS 12.0+
+- Background audio & wakelock capabilities configured.
+
+## 8. Build & Release
+
 ```bash
 # Install dependencies
 flutter pub get
@@ -129,27 +122,13 @@ flutter build apk --debug
 flutter build apk --release
 ```
 
-## 10. Testing & Quality
-- **Test Inventory:**
-  - `test/timeline_engine_test.dart`: 3-Zone silence distribution math, test-mode bypass, and pruning validation.
-  - `test/preferences_test.dart`: SharedPreferences direct primitive key read/write verification across restarts.
-  - `test/manage_practices_test.dart`: Practice creation, segment editing, and selection persistence.
-  - `test/manage_voices_test.dart`: Voice persona filtering, audition playback, and inclusion logic.
-  - `test/widget_test.dart`: Root controller smoke test and navigation verification.
-- **Coverage:** 55 tests passing across all critical business logic and UI integration paths.
-- **Static Analysis:** `flutter analyze` reports 0 issues.
+## 9. TODOs, Known Issues & Technical Debt
 
-## 11. TODOs, Known Issues & Technical Debt
 - **Background Media3 / AudioService Integration:** Audio playback currently relies on foreground wakelock (`wakelock_plus`); migrating to a native Android MediaSession / Foreground AudioService is recommended for lock-screen media controls.
 - **Package ID Migration:** `applicationId` remains `com.example.setandsit` and should be updated prior to Google Play Store publishing.
 
-## 12. Metrics
+## 10. Metrics & Statistics
+
 - **Dart Source Files:** 20 files in `lib/` (approx. 8,850 lines of code).
 - **Test Files:** 5 files in `test/` (approx. 2,390 lines of code).
 - **Total Test Count:** 55 passing tests.
-
-## 13. Suggested Next Steps
-1. Verify release APK on hardware with clean UI and persistent settings intact.
-2. Implement native Android `MediaSession` background service to enable lock-screen playback controls.
-3. Update `applicationId` from `com.example.setandsit` to official clinical production reverse domain.
-4. Add user-facing session completion statistics tracking (sessions completed, total minutes meditated).

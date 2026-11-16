@@ -138,7 +138,7 @@ const Map<String, Map<String, String>> kSegmentMetadata = {
   },
   'S13': {
     'phase': 'Phase 5: Re-Orientation, Meaning & Close',
-    'title': 'Somatic Re-Awakening',
+    'title': 'Physical Re-Awakening',
     'rationale':
         'Gradually re-introduces micro-movements in fingers and toes and deeper breaths to prevent post-meditation disorientation or lethargy.',
     'example':

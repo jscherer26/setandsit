@@ -179,7 +179,7 @@ class SessionQueueEngine {
         return 0;
 
       // Phase 5: Progressive Re-Awakening Taper
-      // Somatic Re-Awakening (S13 -> S14 / S15)
+      // Physical Re-Awakening (S13 -> S14 / S15)
       case 'S13':
         if (isQuickReset) return 4;
         if (isStandardSit) return targetDurationSeconds < 900 ? 8 : 10;

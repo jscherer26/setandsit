@@ -48,7 +48,7 @@ The clinical guidance is structured across a **16-Segment Clinical Meditation Ta
 
 ### Official System Archetypes
 - **Focused Calm (`focused_calm`):** Standard attentional stability archetype ($S01, S02, S03, S04, S06, S07, S08, S12, S13, S15, S16$).
-- **Trauma-Informed Regulation (`trauma_informed`):** Omits breath orientation ($S03$) to prevent hyperventilation loops, utilizing grounded anchors ($S01, S02, S04, S05, S07, S08, S10, S12, S13, S14, S15, S16$).
+- **Trauma-Sensitive Grounding (`trauma_informed`):** Omits breath orientation ($S03$) to prevent hyperventilation loops, utilizing grounded anchors ($S01, S02, S04, S05, S07, S08, S10, S12, S13, S14, S15, S16$).
 - **Open Awareness / Insight (`open_awareness`):** Receptive non-judgmental observation ($S01, S02, S03, S04, S08, S09, S10, S12, S13, S15, S16$).
 - **Metta / Compassion (`metta_compassion`):** Benevolent self and relational compassion ($S01, S02, S03, S04, S07, S11, S12, S13, S14, S15, S16$).
 

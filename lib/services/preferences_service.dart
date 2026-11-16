@@ -161,15 +161,19 @@ class PreferencesService {
   static Future<SavedState> loadState() async {
     try {
       final prefs = await SharedPreferences.getInstance();
+      // Only fall back to the default when the value has never been set.
+      // A stored value of 20 is a legitimate user choice and must be preserved.
       var duration = prefs.getInt('pref_duration');
-      if (duration == null || duration == 20) {
+      if (duration == null) {
         duration = 3;
         await prefs.setInt('pref_duration', 3);
       }
       final instruction = prefs.getDouble('pref_instruction_density') ?? 3.0;
       final redirection = prefs.getDouble('pref_redirection_density') ?? 3.0;
+      // Only fall back to the default when the value has never been set.
+      // A stored value of 10 is a legitimate user choice and must be preserved.
       var delay = prefs.getInt('pref_prep_delay');
-      if (delay == null || delay == 10) {
+      if (delay == null) {
         delay = 3;
         await prefs.setInt('pref_prep_delay', 3);
       }
