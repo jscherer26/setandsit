@@ -27,10 +27,3 @@ Set&Sit calculates dynamically proportioned silence intervals between spoken gui
 flutter pub get
 flutter run
 ```
-
-## AI Agent Protocols & Reference
-
-When an AI agent operates within this repository:
-- **Canonical Agent Reference Manual**: Refer directly to [AGENT_REFERENCE.md](../personal_cloud_hub/AGENT_REFERENCE.md) in the `personal_cloud_hub` project.
-- **Single Source of Truth**: Do **not** create local copies, detached rules, or project-specific cheat sheets that can become outdated.
-- **Execution & Notification Protocols**: Always inspect and follow the canonical reference for cross-project workflows, including Sonos audible bookends (`Bookend with Sonos`), terminal input / approval chimes, and server execution standards.
