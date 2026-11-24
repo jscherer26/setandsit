@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'package:audioplayers/audioplayers.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import '../models/audio_models.dart';
 import '../models/practice_config.dart';
 import '../models/voice_config.dart';
@@ -260,174 +260,152 @@ class _ManageVoicesScreenState extends State<ManageVoicesScreen> {
   }
 
   Widget _buildActionButton({
+    required BuildContext context,
     required IconData icon,
     required String label,
     required VoidCallback? onPressed,
     bool isDestructive = false,
   }) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final semantic = AppSemanticColors.of(context);
     final isEnabled = onPressed != null;
     final color = !isEnabled
-        ? AppColors.textSubtle.withValues(alpha: 0.4)
-        : (isDestructive ? AppColors.errorRed : AppColors.darkOlive);
+        ? semantic.subtle.withValues(alpha: 0.45)
+        : (isDestructive ? colorScheme.error : colorScheme.primary);
 
     return InkWell(
       onTap: onPressed,
       borderRadius: BorderRadius.circular(14),
-      child: Container(
-        height: 46,
-        decoration: BoxDecoration(
-          color: isEnabled
-              ? AppColors.white
-              : AppColors.backgroundSand.withValues(alpha: 0.5),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: !isEnabled
-                ? AppColors.cardBorder.withValues(alpha: 0.3)
-                : (isDestructive
-                    ? AppColors.errorRed.withValues(alpha: 0.4)
-                    : AppColors.cardBorder),
-          ),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, size: 18, color: color),
-            const SizedBox(width: 4),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: color,
-              ),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: 46),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+          decoration: BoxDecoration(
+            color: isEnabled
+                ? colorScheme.surfaceContainerLow
+                : semantic.sandSurface.withValues(alpha: 0.5),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: !isEnabled
+                  ? colorScheme.outlineVariant.withValues(alpha: 0.4)
+                  : (isDestructive
+                      ? colorScheme.error.withValues(alpha: 0.45)
+                      : colorScheme.outlineVariant),
             ),
-          ],
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 18, color: color),
+              const SizedBox(width: 4),
+              Flexible(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    color: color,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
   Widget _buildStepperCard({
+    required BuildContext context,
     required IconData leadingIcon,
     required String title,
     required VoidCallback? onPrevious,
     required VoidCallback? onNext,
   }) {
-    return Container(
-      height: 58,
-      padding: const EdgeInsets.symmetric(horizontal: 10),
-      decoration: BoxDecoration(
-        color: AppColors.white,
+    final colorScheme = Theme.of(context).colorScheme;
+    final semantic = AppSemanticColors.of(context);
+    return Card(
+      shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(29),
-        border: Border.all(
-          color: AppColors.cardBorder.withValues(alpha: 0.6),
-        ),
-        boxShadow: const [
-          BoxShadow(
-            color: AppColors.cardShadow,
-            blurRadius: 10,
-            offset: Offset(0, 3),
-          ),
-        ],
+        side: BorderSide(color: colorScheme.outlineVariant),
       ),
-      child: Row(
-        children: [
-          Container(
-            width: 42,
-            height: 42,
-            decoration: const BoxDecoration(
-              color: AppColors.backgroundSand,
-              shape: BoxShape.circle,
-            ),
-            child: Icon(leadingIcon, color: AppColors.textBlack, size: 22),
-          ),
-          IconButton(
-            icon: const Icon(Icons.chevron_left, color: AppColors.textBlack),
-            onPressed: onPrevious,
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(minWidth: 36, minHeight: 44),
-            splashRadius: 22,
-          ),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 4),
-              child: Text(
-                title,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textBlack,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: 56),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          child: Row(
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: semantic.sandSurface,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(leadingIcon, color: colorScheme.onSurface, size: 22),
+              ),
+              IconButton(
+                icon: Icon(Icons.chevron_left, color: colorScheme.onSurface),
+                onPressed: onPrevious,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 36, minHeight: 44),
+                splashRadius: 22,
+              ),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                  child: Text(
+                    title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w500,
+                      color: colorScheme.onSurface,
+                    ),
+                  ),
                 ),
               ),
-            ),
+              IconButton(
+                icon: Icon(Icons.chevron_right, color: colorScheme.onSurface),
+                onPressed: onNext,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 36, minHeight: 44),
+                splashRadius: 22,
+              ),
+            ],
           ),
-          IconButton(
-            icon: const Icon(Icons.chevron_right, color: AppColors.textBlack),
-            onPressed: onNext,
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(minWidth: 36, minHeight: 44),
-            splashRadius: 22,
-          ),
-        ],
+        ),
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final semantic = AppSemanticColors.of(context);
     final voice = currentVoice;
     final segmentMeta = kSegmentMetadata[currentSegmentCode];
     final variant = currentVariant;
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: colorScheme.surface,
       appBar: AppBar(
-        backgroundColor: AppColors.background,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        automaticallyImplyLeading: false,
-        title: const Text(
-          'Manage Voices',
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: AppColors.textBlack,
-          ),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            _stopAudition();
+            if (widget.onBack != null) {
+              widget.onBack!();
+            } else {
+              Navigator.pop(context);
+            }
+          },
         ),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 20),
-            child: Container(
-              width: 44,
-              height: 44,
-              decoration: const BoxDecoration(
-                color: AppColors.white,
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.cardShadow,
-                    blurRadius: 8,
-                    offset: Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: IconButton(
-                icon: const Icon(Icons.arrow_back, color: AppColors.textBlack, size: 22),
-                onPressed: () {
-                  _stopAudition();
-                  if (widget.onBack != null) {
-                    widget.onBack!();
-                  } else {
-                    Navigator.pop(context);
-                  }
-                },
-              ),
-            ),
-          ),
-        ],
+        title: const Text('Manage Voices'),
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -435,7 +413,7 @@ class _ManageVoicesScreenState extends State<ManageVoicesScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 1. Voice Stepper (< [Voice ListTile Widget] >)
+              // 1. Voice Stepper
               VoiceStepperCard(
                 voice: voice,
                 subtitle: '${voice.description} • ${voice.gender}',
@@ -445,113 +423,118 @@ class _ManageVoicesScreenState extends State<ManageVoicesScreen> {
               const SizedBox(height: 12),
 
               // 2. Action Buttons Row: Add | Copy | Rename | Delete (Disabled)
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildActionButton(
-                      icon: Icons.add,
-                      label: 'Add',
-                      onPressed: null,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: _buildActionButton(
-                      icon: Icons.copy,
-                      label: 'Copy',
-                      onPressed: null,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: _buildActionButton(
-                      icon: Icons.edit_outlined,
-                      label: 'Rename',
-                      onPressed: null,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: _buildActionButton(
-                      icon: Icons.delete_outline,
-                      label: 'Delete',
-                      isDestructive: true,
-                      onPressed: null,
-                    ),
-                  ),
-                ],
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final isScaledOrNarrow =
+                      MediaQuery.textScalerOf(context).scale(1.0) > 1.2 ||
+                          constraints.maxWidth < 360;
+                  final itemWidth = isScaledOrNarrow
+                      ? (constraints.maxWidth - 8) / 2
+                      : (constraints.maxWidth - 24) / 4;
+                  return Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      SizedBox(
+                        width: itemWidth,
+                        child: _buildActionButton(
+                          context: context,
+                          icon: Icons.add,
+                          label: 'Add',
+                          onPressed: null,
+                        ),
+                      ),
+                      SizedBox(
+                        width: itemWidth,
+                        child: _buildActionButton(
+                          context: context,
+                          icon: Icons.copy,
+                          label: 'Copy',
+                          onPressed: null,
+                        ),
+                      ),
+                      SizedBox(
+                        width: itemWidth,
+                        child: _buildActionButton(
+                          context: context,
+                          icon: Icons.edit_outlined,
+                          label: 'Rename',
+                          onPressed: null,
+                        ),
+                      ),
+                      SizedBox(
+                        width: itemWidth,
+                        child: _buildActionButton(
+                          context: context,
+                          icon: Icons.delete_outline,
+                          label: 'Delete',
+                          isDestructive: true,
+                          onPressed: null,
+                        ),
+                      ),
+                    ],
+                  );
+                },
               ),
               const SizedBox(height: 14),
 
               // 3. "Include on Home Screen" Switch
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                decoration: BoxDecoration(
-                  color: AppColors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: AppColors.cardBorder.withValues(alpha: 0.6),
-                  ),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: AppColors.cardShadow,
-                      blurRadius: 8,
-                      offset: Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Include on Home Screen',
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.textBlack,
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Include on Home Screen',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                                color: colorScheme.onSurface,
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            voice.isIncluded
-                                ? 'Active in Home Screen Voice selector'
-                                : 'Hidden from Home Screen Voice selector',
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: AppColors.textMuted,
+                            const SizedBox(height: 2),
+                            Text(
+                              voice.isIncluded
+                                  ? 'Active in Home Screen Voice selector'
+                                  : 'Hidden from Home Screen Voice selector',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: semantic.muted,
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
-                    Switch.adaptive(
-                      value: voice.isIncluded,
-                      activeTrackColor: AppColors.darkOlive,
-                      activeThumbColor: AppColors.white,
-                      onChanged: _toggleInclude,
-                    ),
-                  ],
+                      const SizedBox(width: 8),
+                      Switch.adaptive(
+                        value: voice.isIncluded,
+                        activeTrackColor: colorScheme.primary,
+                        activeThumbColor: colorScheme.onPrimary,
+                        onChanged: _toggleInclude,
+                      ),
+                    ],
+                  ),
                 ),
               ),
               const SizedBox(height: 14),
 
               // 4. "Audition Voice" Button
-              SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(
+              ConstrainedBox(
+                constraints: const BoxConstraints(minWidth: double.infinity, minHeight: 50),
+                child: FilledButton.icon(
+                  style: FilledButton.styleFrom(
                     backgroundColor:
-                        _isPlaying ? AppColors.errorRed : AppColors.darkOlive,
-                    foregroundColor: AppColors.buttonTextLight,
+                        _isPlaying ? colorScheme.error : colorScheme.primary,
+                    foregroundColor:
+                        _isPlaying ? colorScheme.onError : colorScheme.onPrimary,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
                     ),
-                    elevation: 2,
                   ),
                   icon: Icon(_isPlaying ? Icons.stop : Icons.play_arrow,
                       size: 22),
@@ -559,7 +542,7 @@ class _ManageVoicesScreenState extends State<ManageVoicesScreen> {
                     _isPlaying ? 'Stop Audition' : 'Audition Voice',
                     style: const TextStyle(
                       fontSize: 16,
-                      fontWeight: FontWeight.bold,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                   onPressed: _isPlaying ? _stopAudition : _startAudition,
@@ -567,197 +550,169 @@ class _ManageVoicesScreenState extends State<ManageVoicesScreen> {
               ),
 
               if (_isDevMode) ...[
-                // Visual Divider
                 const Padding(
                   padding: EdgeInsets.symmetric(vertical: 18),
-                  child: Divider(
-                    color: AppColors.cardBorder,
-                    height: 1,
-                    thickness: 1,
-                  ),
+                  child: Divider(),
                 ),
 
                 // Bottom Section: Script & Variant Inspector
-                const Text(
+                Text(
                   'Script & Variant Inspector',
                   style: TextStyle(
                     fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textBlack,
-                ),
-              ),
-              const SizedBox(height: 12),
-
-              // 1. Segment Stepper (< [Segment ListTile Widget] >)
-              _buildStepperCard(
-                leadingIcon: Icons.auto_stories_outlined,
-                title:
-                    '$currentSegmentCode • ${segmentMeta?['title'] ?? currentSegmentCode}',
-                onPrevious: _stepSegmentPrevious,
-                onNext: _stepSegmentNext,
-              ),
-              const SizedBox(height: 10),
-
-              // 2. Segment Description Card
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: AppColors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: AppColors.cardBorder.withValues(alpha: 0.6),
+                    fontWeight: FontWeight.w500,
+                    color: colorScheme.onSurface,
                   ),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: AppColors.cardShadow,
-                      blurRadius: 8,
-                      offset: Offset(0, 2),
-                    ),
-                  ],
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
+                const SizedBox(height: 12),
+
+                // 1. Segment Stepper
+                _buildStepperCard(
+                  context: context,
+                  leadingIcon: Icons.auto_stories_outlined,
+                  title:
+                      '$currentSegmentCode • ${segmentMeta?['title'] ?? currentSegmentCode}',
+                  onPrevious: _stepSegmentPrevious,
+                  onNext: _stepSegmentNext,
+                ),
+                const SizedBox(height: 10),
+
+                // 2. Segment Description Card
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Icon(
-                          Icons.info_outline,
-                          size: 16,
-                          color: AppColors.darkOlive,
+                        Wrap(
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          spacing: 6,
+                          runSpacing: 4,
+                          children: [
+                            Icon(
+                              Icons.info_outline,
+                              size: 16,
+                              color: colorScheme.primary,
+                            ),
+                            Text(
+                              'Segment Rationale',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: colorScheme.primary,
+                              ),
+                            ),
+                            if (segmentMeta?['phase'] != null)
+                              Text(
+                                '• ${segmentMeta!['phase']}',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: semantic.muted,
+                                ),
+                              ),
+                          ],
                         ),
-                        const SizedBox(width: 6),
-                        const Text(
-                          'Segment Rationale',
+                        const SizedBox(height: 8),
+                        Text(
+                          segmentMeta?['rationale'] ?? '',
                           style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.darkOlive,
+                            fontSize: 13,
+                            height: 1.4,
+                            color: colorScheme.onSurface,
                           ),
                         ),
-                        if (segmentMeta?['phase'] != null) ...[
-                          const SizedBox(width: 6),
-                          Expanded(
-                            child: Text(
-                              '• ${segmentMeta!['phase']}',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                fontSize: 11,
-                                color: AppColors.textMuted,
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                // 3. Variant Stepper
+                _buildStepperCard(
+                  context: context,
+                  leadingIcon: Icons.format_quote_outlined,
+                  title: variant != null
+                      ? '${variant.variantId} • ${variant.variantName}'
+                      : 'No variants available',
+                  onPrevious:
+                      currentVariants.length > 1 ? _stepVariantPrevious : null,
+                  onNext: currentVariants.length > 1 ? _stepVariantNext : null,
+                ),
+                const SizedBox(height: 10),
+
+                // 4. Variant Script Card
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Expanded(
+                              child: Text(
+                                'Script Variant Text',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: semantic.muted,
+                                  letterSpacing: 0.3,
+                                ),
+                              ),
+                            ),
+                            if (variant != null && variant.wordCount > 0) ...[
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: semantic.sandSurface,
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Text(
+                                  '${variant.wordCount} words',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w500,
+                                    color: semantic.muted,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.only(left: 12),
+                          decoration: BoxDecoration(
+                            border: Border(
+                              left: BorderSide(
+                                color: colorScheme.primary,
+                                width: 3,
                               ),
                             ),
                           ),
-                        ],
+                          child: Text(
+                            variant != null
+                                ? '“${variant.text}”'
+                                : 'No script text found.',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontStyle: FontStyle.italic,
+                              height: 1.5,
+                              color: colorScheme.onSurface,
+                            ),
+                          ),
+                        ),
                       ],
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      segmentMeta?['rationale'] ?? '',
-                      style: const TextStyle(
-                        fontSize: 13,
-                        height: 1.4,
-                        color: AppColors.textBlack,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 12),
-
-              // 3. Variant Stepper (< [Variant ListTile Widget] >)
-              _buildStepperCard(
-                leadingIcon: Icons.format_quote_outlined,
-                title: variant != null
-                    ? '${variant.variantId} • ${variant.variantName}'
-                    : 'No variants available',
-                onPrevious:
-                    currentVariants.length > 1 ? _stepVariantPrevious : null,
-                onNext: currentVariants.length > 1 ? _stepVariantNext : null,
-              ),
-              const SizedBox(height: 10),
-
-              // 4. Variant Script Card
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: AppColors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: AppColors.cardBorder.withValues(alpha: 0.6),
                   ),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: AppColors.cardShadow,
-                      blurRadius: 8,
-                      offset: Offset(0, 2),
-                    ),
-                  ],
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text(
-                          'Script Variant Text',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.textMuted,
-                            letterSpacing: 0.3,
-                          ),
-                        ),
-                        if (variant != null && variant.wordCount > 0)
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 2,
-                            ),
-                            decoration: BoxDecoration(
-                              color: AppColors.backgroundSand,
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: Text(
-                              '${variant.wordCount} words',
-                              style: const TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w500,
-                                color: AppColors.textMuted,
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Container(
-                      padding: const EdgeInsets.only(left: 12),
-                      decoration: const BoxDecoration(
-                        border: Border(
-                          left: BorderSide(
-                            color: AppColors.darkOlive,
-                            width: 3,
-                          ),
-                        ),
-                      ),
-                      child: Text(
-                        variant != null
-                            ? '“${variant.text}”'
-                            : 'No script text found.',
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontStyle: FontStyle.italic,
-                          height: 1.5,
-                          color: AppColors.textBlack,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+              ],
 
               const SizedBox(height: 24),
             ],

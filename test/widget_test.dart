@@ -1,10 +1,11 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:setandsit/main.dart';
 import 'package:setandsit/models/audio_models.dart';
 import 'package:setandsit/screens/clock_time_picker_dialog.dart';
 import 'package:setandsit/screens/practice_screen.dart';
+import 'package:setandsit/theme/app_theme.dart';
 
 void main() {
   setUp(() {
@@ -59,6 +60,7 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
+        theme: AppTheme.light(),
         home: Scaffold(
           body: ClockTimePickerDialog(
             initialHour12: futureHour12,
@@ -80,6 +82,7 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
+        theme: AppTheme.light(),
         home: Scaffold(
           body: ClockTimePickerDialog(
             initialHour12: pastHour12,

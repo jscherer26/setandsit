@@ -35,7 +35,7 @@ jobs:
         run: flutter pub get
 
       - name: Build Flutter Web
-        run: flutter build web --release --base-href "/SetAndSit/" --no-tree-shake-icons
+        run: flutter build web --release --base-href "/SetAndSit/"
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3

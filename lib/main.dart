@@ -1,5 +1,7 @@
+import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 import 'data/bell_data.dart';
 import 'engine/session_queue_engine.dart';
 import 'models/audio_models.dart';
@@ -23,6 +25,8 @@ void main() async {
   SavedState? savedState;
   List<VoiceConfig>? voices;
   List<PracticeConfig>? practices;
+  ThemeMode themeMode = ThemeMode.system;
+  int fontSizePx = PreferencesService.defaultFontSizePx;
 
   try {
     await PreferencesService.init();
@@ -30,6 +34,8 @@ void main() async {
     savedState = await PreferencesService.loadState();
     voices = await PreferencesService.loadVoices();
     practices = await PreferencesService.loadPractices();
+    themeMode = await PreferencesService.loadThemeMode();
+    fontSizePx = await PreferencesService.loadFontSizePx();
   } catch (e, stack) {
     debugPrint('[SetAndSit] Error loading preferences: $e\n$stack');
   }
@@ -40,6 +46,8 @@ void main() async {
     initialVoices: voices,
     initialPractices: practices,
     initialDeveloperMode: false,
+    initialThemeMode: themeMode,
+    initialFontSizePx: fontSizePx,
   ));
 
   // Non-blocking initialization after runApp
@@ -48,11 +56,13 @@ void main() async {
   });
 }
 
-class SetAndSitApp extends StatelessWidget {
+class SetAndSitApp extends StatefulWidget {
   final SavedState? initialState;
   final List<VoiceConfig>? initialVoices;
   final List<PracticeConfig>? initialPractices;
   final bool? initialDeveloperMode;
+  final ThemeMode? initialThemeMode;
+  final int? initialFontSizePx;
 
   const SetAndSitApp({
     super.key,
@@ -60,34 +70,110 @@ class SetAndSitApp extends StatelessWidget {
     this.initialVoices,
     this.initialPractices,
     this.initialDeveloperMode,
+    this.initialThemeMode,
+    this.initialFontSizePx,
   });
+
+  @override
+  State<SetAndSitApp> createState() => _SetAndSitAppState();
+}
+
+class _SetAndSitAppState extends State<SetAndSitApp> {
+  late ThemeMode _themeMode;
+  late int _fontSizePx;
+  bool _themeEditedByUser = false;
+  bool _fontEditedByUser = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _themeMode = widget.initialThemeMode ?? ThemeMode.system;
+    _fontSizePx = PreferencesService.normalizeFontSizePx(widget.initialFontSizePx);
+    if (widget.initialThemeMode == null || widget.initialFontSizePx == null) {
+      _loadDisplayPreferences();
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant SetAndSitApp oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.initialThemeMode != null &&
+        widget.initialThemeMode != oldWidget.initialThemeMode) {
+      _themeMode = widget.initialThemeMode!;
+    }
+    if (widget.initialFontSizePx != null &&
+        widget.initialFontSizePx != oldWidget.initialFontSizePx) {
+      _fontSizePx = PreferencesService.normalizeFontSizePx(widget.initialFontSizePx);
+    }
+  }
+
+  Future<void> _loadDisplayPreferences() async {
+    final loadedTheme = await PreferencesService.loadThemeMode();
+    final loadedFont = await PreferencesService.loadFontSizePx();
+    if (!mounted) return;
+    setState(() {
+      if (widget.initialThemeMode == null && !_themeEditedByUser) {
+        _themeMode = loadedTheme;
+      }
+      if (widget.initialFontSizePx == null && !_fontEditedByUser) {
+        _fontSizePx = loadedFont;
+      }
+    });
+  }
+
+  void _handleThemeModeChanged(ThemeMode mode) {
+    setState(() {
+      _themeEditedByUser = true;
+      _themeMode = mode;
+    });
+    PreferencesService.saveThemeMode(mode);
+  }
+
+  void _handleFontSizeChanged(int fontSizePx) {
+    final normalized = PreferencesService.normalizeFontSizePx(fontSizePx);
+    setState(() {
+      _fontEditedByUser = true;
+      _fontSizePx = normalized;
+    });
+    PreferencesService.saveFontSizePx(normalized);
+  }
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Set&Sit',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        fontFamily: 'Roboto',
-        scaffoldBackgroundColor: AppColors.background,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: AppColors.darkOlive,
-          primary: AppColors.darkOlive,
-        ),
-        useMaterial3: true,
-      ),
+      theme: AppTheme.light(),
+      darkTheme: AppTheme.dark(),
+      themeMode: _themeMode,
       builder: (context, child) {
-        if (!kIsWeb) return child ?? const SizedBox.shrink();
+        final mediaQuery = MediaQuery.of(context);
+        final baseScaler = mediaQuery.textScaler;
+        final appScale = _fontSizePx / PreferencesService.defaultFontSizePx;
+        final effectiveScaler = appScale == 1.0
+            ? baseScaler
+            : TextScaler.linear(baseScaler.scale(1.0) * appScale);
+
+        if (!kIsWeb) {
+          return MediaQuery(
+            data: mediaQuery.copyWith(textScaler: effectiveScaler),
+            child: child ?? const SizedBox.shrink(),
+          );
+        }
         return LayoutBuilder(
           builder: (context, constraints) {
             // When opened on a mobile device's browser, fill the screen normally
             if (constraints.maxWidth <= 500) {
-              return child ?? const SizedBox.shrink();
+              return MediaQuery(
+                data: mediaQuery.copyWith(textScaler: effectiveScaler),
+                child: child ?? const SizedBox.shrink(),
+              );
             }
             // On desktop/laptop web browsers, constrain to phone width and center with a backdrop
             const double maxAppWidth = 440;
+            final semantic = AppSemanticColors.of(context);
             return Container(
-              color: const Color(0xFF1E201E),
+              color: semantic.desktopFrameBackdrop,
               child: Center(
                 child: Container(
                   constraints: const BoxConstraints(maxWidth: maxAppWidth),
@@ -103,8 +189,9 @@ class SetAndSitApp extends StatelessWidget {
                   ),
                   child: ClipRect(
                     child: MediaQuery(
-                      data: MediaQuery.of(context).copyWith(
+                      data: mediaQuery.copyWith(
                         size: Size(maxAppWidth, constraints.maxHeight),
+                        textScaler: effectiveScaler,
                       ),
                       child: child ?? const SizedBox.shrink(),
                     ),
@@ -116,10 +203,14 @@ class SetAndSitApp extends StatelessWidget {
         );
       },
       home: RootControllerScreen(
-        initialState: initialState,
-        initialVoices: initialVoices,
-        initialPractices: initialPractices,
-        initialDeveloperMode: initialDeveloperMode,
+        initialState: widget.initialState,
+        initialVoices: widget.initialVoices,
+        initialPractices: widget.initialPractices,
+        initialDeveloperMode: widget.initialDeveloperMode,
+        themeMode: _themeMode,
+        fontSizePx: _fontSizePx,
+        onThemeModeChanged: _handleThemeModeChanged,
+        onFontSizePxChanged: _handleFontSizeChanged,
       ),
     );
   }
@@ -141,6 +232,10 @@ class RootControllerScreen extends StatefulWidget {
   final List<VoiceConfig>? initialVoices;
   final List<PracticeConfig>? initialPractices;
   final bool? initialDeveloperMode;
+  final ThemeMode themeMode;
+  final int fontSizePx;
+  final ValueChanged<ThemeMode>? onThemeModeChanged;
+  final ValueChanged<int>? onFontSizePxChanged;
 
   const RootControllerScreen({
     super.key,
@@ -148,6 +243,10 @@ class RootControllerScreen extends StatefulWidget {
     this.initialVoices,
     this.initialPractices,
     this.initialDeveloperMode,
+    this.themeMode = ThemeMode.system,
+    this.fontSizePx = PreferencesService.defaultFontSizePx,
+    this.onThemeModeChanged,
+    this.onFontSizePxChanged,
   });
 
   @override
@@ -184,6 +283,10 @@ class _RootControllerScreenState extends State<RootControllerScreen>
   List<SessionItem> _activeSessionQueue = [];
   int _activeTargetSeconds = 180;
 
+  // Reusable audio players pre-unlocked inside the Begin Practice user gesture on Web/mobile PWA.
+  final AudioPlayer _sharedVoicePlayer = AudioPlayer();
+  final AudioPlayer _sharedBellPlayer = AudioPlayer();
+
   @override
   void initState() {
     super.initState();
@@ -209,6 +312,8 @@ class _RootControllerScreenState extends State<RootControllerScreen>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _sharedVoicePlayer.dispose();
+    _sharedBellPlayer.dispose();
     super.dispose();
   }
 
@@ -482,6 +587,25 @@ class _RootControllerScreenState extends State<RootControllerScreen>
     );
   }
 
+  void _primeAudioAndWakelockForPractice() {
+    // Synchronously trigger wakelock and silent playback inside the user gesture
+    // so mobile browsers unlock both audio elements before async/timer transitions.
+    WakelockPlus.enable().catchError((e) {
+      debugPrint('[RootControllerScreen] Error enabling Wakelock: $e');
+    });
+    _sharedVoicePlayer.setReleaseMode(ReleaseMode.loop).catchError((_) {});
+    _sharedVoicePlayer.setVolume(0.0).catchError((_) {});
+    _sharedVoicePlayer.play(AssetSource('audio/silence.mp3')).catchError((e) {
+      debugPrint('[RootControllerScreen] Error priming voice player: $e');
+    });
+
+    _sharedBellPlayer.setReleaseMode(ReleaseMode.release).catchError((_) {});
+    _sharedBellPlayer.setVolume(0.0).catchError((_) {});
+    _sharedBellPlayer.play(AssetSource('audio/silence.mp3')).catchError((e) {
+      debugPrint('[RootControllerScreen] Error priming bell player: $e');
+    });
+  }
+
   void _startPractice({
     required int targetSeconds,
     required String practiceType,
@@ -543,6 +667,8 @@ class _RootControllerScreenState extends State<RootControllerScreen>
       );
       return;
     }
+
+    _primeAudioAndWakelockForPractice();
 
     setState(() {
       _activeTargetSeconds = targetSeconds;
@@ -719,6 +845,17 @@ class _RootControllerScreenState extends State<RootControllerScreen>
           instructionDensity: _instructionDensity,
           redirectionDensity: _redirectionDensity,
           preparationDelaySeconds: _preparationDelaySeconds,
+          themeMode: widget.themeMode,
+          fontSizePx: widget.fontSizePx,
+          onThemeModeChanged: widget.onThemeModeChanged,
+          onFontSizePxChanged: widget.onFontSizePxChanged,
+          isDeveloperMode: _isDeveloperMode,
+          stagedVariantsCount: AudioManifestService.stagedVariantsCount,
+          onDisableDeveloperMode: () async {
+            setState(() => _isDeveloperMode = false);
+            AudioManifestService.setDeveloperMode(false);
+            await PreferencesService.setDeveloperMode(false);
+          },
           onPracticeDurationChanged: (val) {
             _updatePracticeDuration(val);
           },
@@ -814,6 +951,8 @@ class _RootControllerScreenState extends State<RootControllerScreen>
 
         return PracticeScreen(
           isDeveloperMode: _isDeveloperMode,
+          voicePlayer: _sharedVoicePlayer,
+          bellPlayer: _sharedBellPlayer,
           sessionQueue: _activeSessionQueue,
           targetDurationSeconds: _activeTargetSeconds,
           preparationDelaySeconds: _preparationDelaySeconds,

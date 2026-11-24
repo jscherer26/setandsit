@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:setandsit/data/bell_data.dart';
@@ -331,7 +331,7 @@ void main() {
       expect(find.text('Focused Calm (Copy)'), findsOneWidget);
 
       // Tap 'Copy' in dialog
-      await tester.tap(find.widgetWithText(ElevatedButton, 'Copy'));
+      await tester.tap(find.widgetWithText(FilledButton, 'Copy'));
       await tester.pumpAndSettle();
 
       expect(updated, isNotNull);
@@ -696,7 +696,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Delete Practice'), findsOneWidget);
-      await tester.tap(find.widgetWithText(ElevatedButton, 'Delete'));
+      await tester.tap(find.widgetWithText(FilledButton, 'Delete'));
       await tester.pumpAndSettle();
 
       // Safeguard: Focused Calm must be auto-enabled

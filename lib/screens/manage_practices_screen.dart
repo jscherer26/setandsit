@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import '../models/practice_config.dart';
 import '../services/preferences_service.dart';
 import '../theme/app_theme.dart';
@@ -182,115 +182,118 @@ class _ManagePracticesScreenState extends State<ManagePracticesScreen> {
 
     showDialog(
       context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialogState) => AlertDialog(
-          backgroundColor: AppColors.white,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: const Text(
-            'Add Custom Practice',
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              color: AppColors.textBlack,
-            ),
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              TextField(
-                controller: nameController,
-                autofocus: true,
-                decoration: InputDecoration(
-                  labelText: 'Practice Name',
-                  hintText: 'e.g., Evening Wind-Down',
-                  errorText: errorText,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
+      builder: (ctx) {
+        final colorScheme = Theme.of(ctx).colorScheme;
+        return StatefulBuilder(
+          builder: (ctx, setDialogState) => AlertDialog(
+            backgroundColor: colorScheme.surfaceContainerLow,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: Text(
+              'Add Custom Practice',
+              style: TextStyle(
+                fontWeight: FontWeight.w500,
+                color: colorScheme.onSurface,
               ),
-              const SizedBox(height: 14),
-              TextField(
-                controller: subtitleController,
-                maxLines: 2,
-                decoration: InputDecoration(
-                  labelText: 'Clinical Intention / Subtitle',
-                  hintText: 'e.g., Gentle down-regulation before sleep.',
-                  border: OutlineInputBorder(
+            ),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  TextField(
+                    controller: nameController,
+                    autofocus: true,
+                    decoration: InputDecoration(
+                      labelText: 'Practice Name',
+                      hintText: 'e.g., Evening Wind-Down',
+                      errorText: errorText,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  TextField(
+                    controller: subtitleController,
+                    maxLines: 2,
+                    decoration: InputDecoration(
+                      labelText: 'Clinical Intention / Subtitle',
+                      hintText: 'e.g., Gentle down-regulation before sleep.',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                style: FilledButton.styleFrom(
+                  shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
+                onPressed: () {
+                  final name = nameController.text.trim();
+                  if (name.isEmpty) {
+                    setDialogState(() {
+                      errorText = 'Name cannot be empty';
+                    });
+                    return;
+                  }
+
+                  final exists = _practices.any(
+                    (p) => p.name.trim().toLowerCase() == name.toLowerCase(),
+                  );
+                  if (exists) {
+                    setDialogState(() {
+                      errorText = 'A practice with this name already exists';
+                    });
+                    return;
+                  }
+
+                  final newPractice = PracticeConfig(
+                    id: 'custom_${DateTime.now().millisecondsSinceEpoch}',
+                    name: name,
+                    subtitle: subtitleController.text.trim().isEmpty
+                        ? 'Custom meditation practice.'
+                        : subtitleController.text.trim(),
+                    isSystem: false,
+                    isIncluded: true,
+                    segmentIds: [
+                      'S01',
+                      'S02',
+                      'S03',
+                      'S08',
+                      'S12',
+                      'S13',
+                      'S15',
+                      'S16',
+                    ],
+                  );
+
+                  setState(() {
+                    _practices.add(newPractice);
+                    _selectedPracticeId = newPractice.id;
+                    if (_currentFilter == PracticeFilter.system) {
+                      _currentFilter = PracticeFilter.custom;
+                    }
+                    _subtitleController.text = newPractice.subtitle;
+                  });
+                  _saveAndNotify();
+                  Navigator.pop(ctx);
+                },
+                child: const Text('Create'),
               ),
             ],
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.darkOlive,
-                foregroundColor: AppColors.buttonTextLight,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              onPressed: () {
-                final name = nameController.text.trim();
-                if (name.isEmpty) {
-                  setDialogState(() {
-                    errorText = 'Name cannot be empty';
-                  });
-                  return;
-                }
-
-                final exists = _practices.any(
-                  (p) => p.name.trim().toLowerCase() == name.toLowerCase(),
-                );
-                if (exists) {
-                  setDialogState(() {
-                    errorText = 'A practice with this name already exists';
-                  });
-                  return;
-                }
-
-                final newPractice = PracticeConfig(
-                  id: 'custom_${DateTime.now().millisecondsSinceEpoch}',
-                  name: name,
-                  subtitle: subtitleController.text.trim().isEmpty
-                      ? 'Custom meditation practice.'
-                      : subtitleController.text.trim(),
-                  isSystem: false,
-                  isIncluded: true,
-                  segmentIds: [
-                    'S01',
-                    'S02',
-                    'S03',
-                    'S08',
-                    'S12',
-                    'S13',
-                    'S15',
-                    'S16',
-                  ],
-                );
-
-                setState(() {
-                  _practices.add(newPractice);
-                  _selectedPracticeId = newPractice.id;
-                  if (_currentFilter == PracticeFilter.system) {
-                    _currentFilter = PracticeFilter.custom;
-                  }
-                  _subtitleController.text = newPractice.subtitle;
-                });
-                _saveAndNotify();
-                Navigator.pop(ctx);
-              },
-              child: const Text('Create'),
-            ),
-          ],
-        ),
-      ),
+        );
+      },
     );
   }
 
@@ -312,104 +315,107 @@ class _ManagePracticesScreenState extends State<ManagePracticesScreen> {
 
     showDialog(
       context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialogState) => AlertDialog(
-          backgroundColor: AppColors.white,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: const Text(
-            'Copy Practice',
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              color: AppColors.textBlack,
-            ),
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              TextField(
-                controller: nameController,
-                autofocus: true,
-                decoration: InputDecoration(
-                  labelText: 'Practice Name',
-                  errorText: errorText,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
+      builder: (ctx) {
+        final colorScheme = Theme.of(ctx).colorScheme;
+        return StatefulBuilder(
+          builder: (ctx, setDialogState) => AlertDialog(
+            backgroundColor: colorScheme.surfaceContainerLow,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: Text(
+              'Copy Practice',
+              style: TextStyle(
+                fontWeight: FontWeight.w500,
+                color: colorScheme.onSurface,
               ),
-              const SizedBox(height: 14),
-              TextField(
-                controller: subtitleController,
-                maxLines: 2,
-                decoration: InputDecoration(
-                  labelText: 'Clinical Intention / Subtitle',
-                  border: OutlineInputBorder(
+            ),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  TextField(
+                    controller: nameController,
+                    autofocus: true,
+                    decoration: InputDecoration(
+                      labelText: 'Practice Name',
+                      errorText: errorText,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  TextField(
+                    controller: subtitleController,
+                    maxLines: 2,
+                    decoration: InputDecoration(
+                      labelText: 'Clinical Intention / Subtitle',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                style: FilledButton.styleFrom(
+                  shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
+                onPressed: () {
+                  final name = nameController.text.trim();
+                  if (name.isEmpty) {
+                    setDialogState(() {
+                      errorText = 'Name cannot be empty';
+                    });
+                    return;
+                  }
+
+                  final exists = _practices.any(
+                    (p) => p.name.trim().toLowerCase() == name.toLowerCase(),
+                  );
+                  if (exists) {
+                    setDialogState(() {
+                      errorText = 'A practice with this name already exists';
+                    });
+                    return;
+                  }
+
+                  final newPractice = PracticeConfig(
+                    id: 'custom_${DateTime.now().millisecondsSinceEpoch}',
+                    name: name,
+                    subtitle: subtitleController.text.trim().isEmpty
+                        ? practice.subtitle
+                        : subtitleController.text.trim(),
+                    isSystem: false,
+                    isIncluded: true,
+                    segmentIds: List<String>.from(practice.segmentIds),
+                  );
+
+                  setState(() {
+                    _practices.add(newPractice);
+                    _selectedPracticeId = newPractice.id;
+                    if (_currentFilter == PracticeFilter.system) {
+                      _currentFilter = PracticeFilter.custom;
+                    }
+                    _subtitleController.text = newPractice.subtitle;
+                  });
+                  _saveAndNotify();
+                  Navigator.pop(ctx);
+                },
+                child: const Text('Copy'),
               ),
             ],
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.darkOlive,
-                foregroundColor: AppColors.buttonTextLight,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              onPressed: () {
-                final name = nameController.text.trim();
-                if (name.isEmpty) {
-                  setDialogState(() {
-                    errorText = 'Name cannot be empty';
-                  });
-                  return;
-                }
-
-                final exists = _practices.any(
-                  (p) => p.name.trim().toLowerCase() == name.toLowerCase(),
-                );
-                if (exists) {
-                  setDialogState(() {
-                    errorText = 'A practice with this name already exists';
-                  });
-                  return;
-                }
-
-                final newPractice = PracticeConfig(
-                  id: 'custom_${DateTime.now().millisecondsSinceEpoch}',
-                  name: name,
-                  subtitle: subtitleController.text.trim().isEmpty
-                      ? practice.subtitle
-                      : subtitleController.text.trim(),
-                  isSystem: false,
-                  isIncluded: true,
-                  segmentIds: List<String>.from(practice.segmentIds),
-                );
-
-                setState(() {
-                  _practices.add(newPractice);
-                  _selectedPracticeId = newPractice.id;
-                  if (_currentFilter == PracticeFilter.system) {
-                    _currentFilter = PracticeFilter.custom;
-                  }
-                  _subtitleController.text = newPractice.subtitle;
-                });
-                _saveAndNotify();
-                Navigator.pop(ctx);
-              },
-              child: const Text('Copy'),
-            ),
-          ],
-        ),
-      ),
+        );
+      },
     );
   }
 
@@ -423,96 +429,99 @@ class _ManagePracticesScreenState extends State<ManagePracticesScreen> {
 
     showDialog(
       context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialogState) => AlertDialog(
-          backgroundColor: AppColors.white,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: const Text(
-            'Rename Practice',
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              color: AppColors.textBlack,
-            ),
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              TextField(
-                controller: nameController,
-                autofocus: true,
-                decoration: InputDecoration(
-                  labelText: 'Practice Name',
-                  errorText: errorText,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
+      builder: (ctx) {
+        final colorScheme = Theme.of(ctx).colorScheme;
+        return StatefulBuilder(
+          builder: (ctx, setDialogState) => AlertDialog(
+            backgroundColor: colorScheme.surfaceContainerLow,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: Text(
+              'Rename Practice',
+              style: TextStyle(
+                fontWeight: FontWeight.w500,
+                color: colorScheme.onSurface,
               ),
-              const SizedBox(height: 14),
-              TextField(
-                controller: subtitleController,
-                maxLines: 2,
-                decoration: InputDecoration(
-                  labelText: 'Clinical Intention / Subtitle',
-                  border: OutlineInputBorder(
+            ),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  TextField(
+                    controller: nameController,
+                    autofocus: true,
+                    decoration: InputDecoration(
+                      labelText: 'Practice Name',
+                      errorText: errorText,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  TextField(
+                    controller: subtitleController,
+                    maxLines: 2,
+                    decoration: InputDecoration(
+                      labelText: 'Clinical Intention / Subtitle',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                style: FilledButton.styleFrom(
+                  shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
+                onPressed: () {
+                  final name = nameController.text.trim();
+                  if (name.isEmpty) {
+                    setDialogState(() {
+                      errorText = 'Name cannot be empty';
+                    });
+                    return;
+                  }
+
+                  final exists = _practices.any(
+                    (p) => p.id != practice.id && p.name.trim().toLowerCase() == name.toLowerCase(),
+                  );
+                  if (exists) {
+                    setDialogState(() {
+                      errorText = 'A practice with this name already exists';
+                    });
+                    return;
+                  }
+
+                  final updatedSubtitle = subtitleController.text.trim();
+                  setState(() {
+                    final idx = _practices.indexWhere((p) => p.id == practice.id);
+                    if (idx != -1) {
+                      _practices[idx] = practice.copyWith(
+                        name: name,
+                        subtitle: updatedSubtitle,
+                      );
+                    }
+                    _subtitleController.text = updatedSubtitle;
+                  });
+                  _saveAndNotify();
+                  Navigator.pop(ctx);
+                },
+                child: const Text('Save'),
               ),
             ],
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.darkOlive,
-                foregroundColor: AppColors.buttonTextLight,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              onPressed: () {
-                final name = nameController.text.trim();
-                if (name.isEmpty) {
-                  setDialogState(() {
-                    errorText = 'Name cannot be empty';
-                  });
-                  return;
-                }
-
-                final exists = _practices.any(
-                  (p) => p.id != practice.id && p.name.trim().toLowerCase() == name.toLowerCase(),
-                );
-                if (exists) {
-                  setDialogState(() {
-                    errorText = 'A practice with this name already exists';
-                  });
-                  return;
-                }
-
-                final updatedSubtitle = subtitleController.text.trim();
-                setState(() {
-                  final idx = _practices.indexWhere((p) => p.id == practice.id);
-                  if (idx != -1) {
-                    _practices[idx] = practice.copyWith(
-                      name: name,
-                      subtitle: updatedSubtitle,
-                    );
-                  }
-                  _subtitleController.text = updatedSubtitle;
-                });
-                _saveAndNotify();
-                Navigator.pop(ctx);
-              },
-              child: const Text('Save'),
-            ),
-          ],
-        ),
-      ),
+        );
+      },
     );
   }
 
@@ -522,63 +531,66 @@ class _ManagePracticesScreenState extends State<ManagePracticesScreen> {
 
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text(
-          'Delete Practice',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: AppColors.textBlack,
-          ),
-        ),
-        content: Text(
-          'Are you sure you want to delete "${practice.name}"? This action cannot be undone.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.errorRed,
-              foregroundColor: AppColors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
+      builder: (ctx) {
+        final colorScheme = Theme.of(ctx).colorScheme;
+        return AlertDialog(
+          backgroundColor: colorScheme.surfaceContainerLow,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Text(
+            'Delete Practice',
+            style: TextStyle(
+              fontWeight: FontWeight.w500,
+              color: colorScheme.onSurface,
             ),
-            onPressed: () {
-              setState(() {
-                _practices.removeWhere((p) => p.id == practice.id);
-
-                // Safeguard: If deleting the last isIncluded practice, auto-enable Focused Calm
-                final remainingIncluded = _practices.where((p) => p.isIncluded).toList();
-                if (remainingIncluded.isEmpty) {
-                  final fcIdx = _practices.indexWhere((p) => p.id == 'focused_calm');
-                  if (fcIdx != -1) {
-                    _practices[fcIdx] = _practices[fcIdx].copyWith(isIncluded: true);
-                  } else if (_practices.isNotEmpty) {
-                    _practices[0] = _practices[0].copyWith(isIncluded: true);
-                  }
-                }
-
-                // Pick an available practice in the current filter
-                final filtered = filteredPractices;
-                if (filtered.isNotEmpty) {
-                  _selectedPracticeId = filtered.first.id;
-                } else if (_practices.isNotEmpty) {
-                  _selectedPracticeId = _practices.first.id;
-                }
-                _subtitleController.text = currentPractice?.subtitle ?? '';
-              });
-              _saveAndNotify();
-              Navigator.pop(ctx);
-            },
-            child: const Text('Delete'),
           ),
-        ],
-      ),
+          content: Text(
+            'Are you sure you want to delete "${practice.name}"? This action cannot be undone.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: colorScheme.error,
+                foregroundColor: colorScheme.onError,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              onPressed: () {
+                setState(() {
+                  _practices.removeWhere((p) => p.id == practice.id);
+
+                  // Safeguard: If deleting the last isIncluded practice, auto-enable Focused Calm
+                  final remainingIncluded = _practices.where((p) => p.isIncluded).toList();
+                  if (remainingIncluded.isEmpty) {
+                    final fcIdx = _practices.indexWhere((p) => p.id == 'focused_calm');
+                    if (fcIdx != -1) {
+                      _practices[fcIdx] = _practices[fcIdx].copyWith(isIncluded: true);
+                    } else if (_practices.isNotEmpty) {
+                      _practices[0] = _practices[0].copyWith(isIncluded: true);
+                    }
+                  }
+
+                  // Pick an available practice in the current filter
+                  final filtered = filteredPractices;
+                  if (filtered.isNotEmpty) {
+                    _selectedPracticeId = filtered.first.id;
+                  } else if (_practices.isNotEmpty) {
+                    _selectedPracticeId = _practices.first.id;
+                  }
+                  _subtitleController.text = currentPractice?.subtitle ?? '';
+                });
+                _saveAndNotify();
+                Navigator.pop(ctx);
+              },
+              child: const Text('Delete'),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -589,152 +601,164 @@ class _ManagePracticesScreenState extends State<ManagePracticesScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: AppColors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (ctx) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Drag Handle
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  margin: const EdgeInsets.only(bottom: 16),
-                  decoration: BoxDecoration(
-                    color: AppColors.cardBorder,
-                    borderRadius: BorderRadius.circular(2),
+      builder: (ctx) {
+        final colorScheme = Theme.of(ctx).colorScheme;
+        final semantic = AppSemanticColors.of(ctx);
+        return SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Drag Handle
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    margin: const EdgeInsets.only(bottom: 16),
+                    decoration: BoxDecoration(
+                      color: colorScheme.outlineVariant,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
                   ),
                 ),
-              ),
 
-              // Phase Header
-              Text(
-                meta['phase'] ?? '',
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.darkOlive,
-                  letterSpacing: 0.5,
-                ),
-              ),
-              const SizedBox(height: 6),
-
-              // Segment Code & Name
-              Text(
-                '$code • ${meta['title']}',
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textBlack,
-                ),
-              ),
-              const SizedBox(height: 16),
-              const Divider(color: AppColors.cardBorder, height: 1),
-              const SizedBox(height: 16),
-
-              // Clinical Rationale & Function
-              const Text(
-                'Clinical Rationale & Function',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textMuted,
-                  letterSpacing: 0.3,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                meta['rationale'] ?? '',
-                style: const TextStyle(
-                  fontSize: 14,
-                  color: AppColors.textBlack,
-                  height: 1.4,
-                ),
-              ),
-              const SizedBox(height: 20),
-
-              // Example Guidance Script
-              const Text(
-                'Example Guidance Script',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textMuted,
-                  letterSpacing: 0.3,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: AppColors.backgroundSand,
-                  borderRadius: BorderRadius.circular(12),
-                  border: const Border(
-                    left: BorderSide(color: AppColors.darkOlive, width: 3),
+                // Phase Header
+                Text(
+                  meta['phase'] ?? '',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: colorScheme.primary,
+                    letterSpacing: 0.5,
                   ),
                 ),
-                child: Text(
-                  meta['example'] ?? '',
-                  style: const TextStyle(
+                const SizedBox(height: 6),
+
+                // Segment Code & Name
+                Text(
+                  '$code • ${meta['title']}',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w500,
+                    color: colorScheme.onSurface,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                const Divider(),
+                const SizedBox(height: 16),
+
+                // Clinical Rationale & Function
+                Text(
+                  'Clinical Rationale & Function',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: semantic.muted,
+                    letterSpacing: 0.3,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  meta['rationale'] ?? '',
+                  style: TextStyle(
                     fontSize: 14,
-                    fontStyle: FontStyle.italic,
-                    color: AppColors.textBlack,
+                    color: colorScheme.onSurface,
                     height: 1.4,
                   ),
                 ),
-              ),
-              const SizedBox(height: 16),
-            ],
+                const SizedBox(height: 20),
+
+                // Example Guidance Script
+                Text(
+                  'Example Guidance Script',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: semantic.muted,
+                    letterSpacing: 0.3,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: semantic.sandSurface,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border(
+                      left: BorderSide(color: colorScheme.primary, width: 3),
+                    ),
+                  ),
+                  child: Text(
+                    meta['example'] ?? '',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontStyle: FontStyle.italic,
+                      color: colorScheme.onSurface,
+                      height: 1.4,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
+            ),
           ),
+        );
+      },
+    );
+  }
+
+  Widget _buildFilterPill(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final semantic = AppSemanticColors.of(context);
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minHeight: 46),
+      child: Container(
+        padding: const EdgeInsets.all(4),
+        decoration: BoxDecoration(
+          color: semantic.pillUnselected,
+          borderRadius: BorderRadius.circular(24),
+        ),
+        child: Row(
+          children: [
+            _buildFilterOption(
+              context: context,
+              filter: PracticeFilter.all,
+              title: 'All',
+              activeColor: colorScheme.primary,
+              activeTextColor: colorScheme.onPrimary,
+              inactiveColor: colorScheme.onSurface,
+            ),
+            _buildFilterOption(
+              context: context,
+              filter: PracticeFilter.system,
+              title: 'System',
+              activeColor: semantic.systemPractice,
+              activeTextColor: Colors.white,
+              inactiveColor: semantic.systemPractice,
+            ),
+            _buildFilterOption(
+              context: context,
+              filter: PracticeFilter.custom,
+              title: 'Custom',
+              activeColor: semantic.customPractice,
+              activeTextColor: Colors.white,
+              inactiveColor: semantic.customPractice,
+            ),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildFilterPill() {
-    return Container(
-      height: 48,
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: AppColors.pillUnselected,
-        borderRadius: BorderRadius.circular(24),
-      ),
-      child: Row(
-        children: [
-          _buildFilterOption(
-            filter: PracticeFilter.all,
-            title: 'All',
-            activeColor: AppColors.darkOlive,
-            inactiveColor: AppColors.textBlack,
-          ),
-          _buildFilterOption(
-            filter: PracticeFilter.system,
-            title: 'System',
-            activeColor: AppColors.systemBlue,
-            inactiveColor: AppColors.systemBlue,
-          ),
-          _buildFilterOption(
-            filter: PracticeFilter.custom,
-            title: 'Custom',
-            activeColor: AppColors.customGreen,
-            inactiveColor: AppColors.customGreen,
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildFilterOption({
+    required BuildContext context,
     required PracticeFilter filter,
     required String title,
     required Color activeColor,
+    required Color activeTextColor,
     required Color inactiveColor,
   }) {
     final isSelected = _currentFilter == filter;
@@ -751,17 +775,22 @@ class _ManagePracticesScreenState extends State<ManagePracticesScreen> {
           });
         },
         child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
           decoration: BoxDecoration(
             color: isSelected ? activeColor : Colors.transparent,
             borderRadius: BorderRadius.circular(20),
           ),
           alignment: Alignment.center,
-          child: Text(
-            title,
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: isSelected ? AppColors.buttonTextLight : inactiveColor,
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              title,
+              maxLines: 1,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: isSelected ? activeTextColor : inactiveColor,
+              ),
             ),
           ),
         ),
@@ -770,46 +799,58 @@ class _ManagePracticesScreenState extends State<ManagePracticesScreen> {
   }
 
   Widget _buildActionButton({
+    required BuildContext context,
     required IconData icon,
     required String label,
     required VoidCallback? onPressed,
     bool isDestructive = false,
   }) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final semantic = AppSemanticColors.of(context);
     final isEnabled = onPressed != null;
     final color = !isEnabled
-        ? AppColors.textSubtle.withValues(alpha: 0.4)
-        : (isDestructive ? AppColors.errorRed : AppColors.darkOlive);
+        ? semantic.subtle.withValues(alpha: 0.45)
+        : (isDestructive ? colorScheme.error : colorScheme.primary);
 
     return InkWell(
       onTap: onPressed,
       borderRadius: BorderRadius.circular(14),
-      child: Container(
-        height: 46,
-        decoration: BoxDecoration(
-          color: isEnabled ? AppColors.white : AppColors.backgroundSand.withValues(alpha: 0.5),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: !isEnabled
-                ? AppColors.cardBorder.withValues(alpha: 0.3)
-                : (isDestructive
-                    ? AppColors.errorRed.withValues(alpha: 0.4)
-                    : AppColors.cardBorder),
-          ),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, size: 18, color: color),
-            const SizedBox(width: 4),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: color,
-              ),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: 46),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+          decoration: BoxDecoration(
+            color: isEnabled
+                ? colorScheme.surfaceContainerLow
+                : semantic.sandSurface.withValues(alpha: 0.5),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: !isEnabled
+                  ? colorScheme.outlineVariant.withValues(alpha: 0.4)
+                  : (isDestructive
+                      ? colorScheme.error.withValues(alpha: 0.45)
+                      : colorScheme.outlineVariant),
             ),
-          ],
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 18, color: color),
+              const SizedBox(width: 4),
+              Flexible(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    color: color,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -817,48 +858,19 @@ class _ManagePracticesScreenState extends State<ManagePracticesScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final semantic = AppSemanticColors.of(context);
     final practice = currentPractice;
     final hasPractices = practice != null;
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: colorScheme.surface,
       appBar: AppBar(
-        backgroundColor: AppColors.background,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        automaticallyImplyLeading: false,
-        title: const Text(
-          'Manage Practices',
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: AppColors.textBlack,
-          ),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: widget.onBack ?? () => Navigator.pop(context),
         ),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 20),
-            child: Container(
-              width: 44,
-              height: 44,
-              decoration: const BoxDecoration(
-                color: AppColors.white,
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.cardShadow,
-                    blurRadius: 8,
-                    offset: Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: IconButton(
-                icon: const Icon(Icons.arrow_back, color: AppColors.textBlack, size: 22),
-                onPressed: widget.onBack ?? () => Navigator.pop(context),
-              ),
-            ),
-          ),
-        ],
+        title: const Text('Manage Practices'),
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -867,130 +879,124 @@ class _ManagePracticesScreenState extends State<ManagePracticesScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // 1. Filter Segmented Control
-              _buildFilterPill(),
+              _buildFilterPill(context),
               const SizedBox(height: 18),
 
               // 2. Empty-state card if Custom filter is empty
               if (!hasPractices && _currentFilter == PracticeFilter.custom) ...[
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 28),
-                  decoration: BoxDecoration(
-                    color: AppColors.white,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: AppColors.cardBorder.withValues(alpha: 0.6),
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 28),
+                    child: Column(
+                      children: [
+                        Icon(
+                          Icons.self_improvement_outlined,
+                          size: 48,
+                          color: semantic.customPractice,
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          'No Custom Practices Yet',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                            color: colorScheme.onSurface,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          'Create a custom practice from scratch or copy an existing system practice to customize segments.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: semantic.muted,
+                          ),
+                        ),
+                        const SizedBox(height: 18),
+                        Wrap(
+                          alignment: WrapAlignment.center,
+                          spacing: 12,
+                          runSpacing: 8,
+                          children: [
+                            FilledButton.icon(
+                              style: FilledButton.styleFrom(
+                                backgroundColor: semantic.customPractice,
+                                foregroundColor: Colors.white,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                              ),
+                              onPressed: _showAddDialog,
+                              icon: const Icon(Icons.add, size: 18),
+                              label: const Text('Add Practice'),
+                            ),
+                            OutlinedButton(
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: semantic.systemPractice,
+                                side: BorderSide(color: semantic.systemPractice),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                              ),
+                              onPressed: () {
+                                setState(() {
+                                  _currentFilter = PracticeFilter.system;
+                                });
+                              },
+                              child: const Text('View System'),
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
-                  ),
-                  child: Column(
-                    children: [
-                      const Icon(
-                        Icons.self_improvement_outlined,
-                        size: 48,
-                        color: AppColors.customGreen,
-                      ),
-                      const SizedBox(height: 12),
-                      const Text(
-                        'No Custom Practices Yet',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.textBlack,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      const Text(
-                        'Create a custom practice from scratch or copy an existing system practice to customize segments.',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: AppColors.textMuted,
-                        ),
-                      ),
-                      const SizedBox(height: 18),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          ElevatedButton.icon(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.customGreen,
-                              foregroundColor: AppColors.buttonTextLight,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                            ),
-                            onPressed: _showAddDialog,
-                            icon: const Icon(Icons.add, size: 18),
-                            label: const Text('Add Practice'),
-                          ),
-                          const SizedBox(width: 12),
-                          OutlinedButton(
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: AppColors.systemBlue,
-                              side: const BorderSide(color: AppColors.systemBlue),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                            ),
-                            onPressed: () {
-                              setState(() {
-                                _currentFilter = PracticeFilter.system;
-                              });
-                            },
-                            child: const Text('View System'),
-                          ),
-                        ],
-                      ),
-                    ],
                   ),
                 ),
               ] else if (hasPractices) ...[
                 // 2. Practice Stepper (Practice Name colored: Blue for System, Green for Custom)
                 PracticeStepperCard(
                   practice: practice,
-                  titleColor: practice.isSystem ? AppColors.systemBlue : AppColors.customGreen,
+                  titleColor: practice.isSystem
+                      ? semantic.systemPractice
+                      : semantic.customPractice,
                   onPrevious: filteredPractices.length > 1 ? _stepPrevious : null,
                   onNext: filteredPractices.length > 1 ? _stepNext : null,
                 ),
                 const SizedBox(height: 12),
 
-                // Clinical Intention / Subtitle for ALL practices with blue and green styling
-                Container(
-                  decoration: BoxDecoration(
-                    color: AppColors.white,
+                // Clinical Intention / Subtitle for ALL practices
+                Card(
+                  shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: (practice.isSystem ? AppColors.systemBlue : AppColors.customGreen)
-                          .withValues(alpha: 0.4),
+                    side: BorderSide(
+                      color: (practice.isSystem
+                              ? semantic.systemPractice
+                              : semantic.customPractice)
+                          .withValues(alpha: 0.45),
                       width: 1.2,
                     ),
-                    boxShadow: const [
-                      BoxShadow(
-                        color: AppColors.cardShadow,
-                        blurRadius: 6,
-                        offset: Offset(0, 2),
-                      ),
-                    ],
                   ),
                   child: TextField(
                     controller: _subtitleController,
                     readOnly: practice.isSystem,
                     maxLines: 2,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 13,
-                      color: AppColors.textBlack,
+                      color: colorScheme.onSurface,
                     ),
                     decoration: InputDecoration(
                       labelText: 'Clinical Intention / Subtitle',
                       labelStyle: TextStyle(
                         fontSize: 12,
-                        color: practice.isSystem ? AppColors.systemBlue : AppColors.customGreen,
+                        color: practice.isSystem
+                            ? semantic.systemPractice
+                            : semantic.customPractice,
                         fontWeight: FontWeight.w600,
                       ),
                       hintText: 'Enter clinical intention or description...',
-                      hintStyle: const TextStyle(
+                      hintStyle: TextStyle(
                         fontSize: 13,
-                        color: AppColors.textSubtle,
+                        color: semantic.subtle,
                       ),
                       contentPadding: const EdgeInsets.symmetric(
                         horizontal: 16,
@@ -1011,119 +1017,128 @@ class _ManagePracticesScreenState extends State<ManagePracticesScreen> {
                 ),
                 const SizedBox(height: 12),
 
-                // 3. Include/Exclude Toggle & Action Bar
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  decoration: BoxDecoration(
-                    color: AppColors.white,
-                    borderRadius: BorderRadius.circular(18),
-                    border: Border.all(
-                      color: AppColors.cardBorder.withValues(alpha: 0.6),
-                    ),
-                    boxShadow: const [
-                      BoxShadow(
-                        color: AppColors.cardShadow,
-                        blurRadius: 8,
-                        offset: Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Include on Home Screen',
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.textBlack,
+                // 3. Include/Exclude Toggle
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Include on Home Screen',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                  color: colorScheme.onSurface,
+                                ),
                               ),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              practice.isIncluded
-                                  ? 'Active in Home Screen Practice selector'
-                                  : 'Hidden from Home Screen Practice selector',
-                              style: const TextStyle(
-                                fontSize: 12,
-                                color: AppColors.textMuted,
+                              const SizedBox(height: 2),
+                              Text(
+                                practice.isIncluded
+                                    ? 'Active in Home Screen Practice selector'
+                                    : 'Hidden from Home Screen Practice selector',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: semantic.muted,
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
-                      ),
-                      Switch.adaptive(
-                        value: practice.isIncluded,
-                        activeTrackColor: AppColors.darkOlive,
-                        activeThumbColor: AppColors.white,
-                        onChanged: _toggleInclude,
-                      ),
-                    ],
+                        const SizedBox(width: 8),
+                        Switch.adaptive(
+                          value: practice.isIncluded,
+                          activeTrackColor: colorScheme.primary,
+                          activeThumbColor: colorScheme.onPrimary,
+                          onChanged: _toggleInclude,
+                        ),
+                      ],
+                    ),
                   ),
                 ),
                 const SizedBox(height: 10),
 
-                // Action Buttons Row: Add | Copy | Rename | Delete
-                Row(
-                  children: [
-                    Expanded(
-                      child: _buildActionButton(
-                        icon: Icons.add,
-                        label: 'Add',
-                        onPressed: _showAddDialog,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: _buildActionButton(
-                        icon: Icons.copy,
-                        label: 'Copy',
-                        onPressed: _showCopyDialog,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: _buildActionButton(
-                        icon: Icons.edit_outlined,
-                        label: 'Rename',
-                        onPressed: practice.isSystem ? null : _showRenameDialog,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: _buildActionButton(
-                        icon: Icons.delete_outline,
-                        label: 'Delete',
-                        isDestructive: true,
-                        onPressed: practice.isSystem ? null : _showDeleteDialog,
-                      ),
-                    ),
-                  ],
+                // Action Buttons Row: Add | Copy | Rename | Delete (adapts to 2x2 when scaled/narrow)
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    final isScaledOrNarrow =
+                        MediaQuery.textScalerOf(context).scale(1.0) > 1.2 ||
+                            constraints.maxWidth < 360;
+                    final itemWidth = isScaledOrNarrow
+                        ? (constraints.maxWidth - 8) / 2
+                        : (constraints.maxWidth - 24) / 4;
+                    return Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        SizedBox(
+                          width: itemWidth,
+                          child: _buildActionButton(
+                            context: context,
+                            icon: Icons.add,
+                            label: 'Add',
+                            onPressed: _showAddDialog,
+                          ),
+                        ),
+                        SizedBox(
+                          width: itemWidth,
+                          child: _buildActionButton(
+                            context: context,
+                            icon: Icons.copy,
+                            label: 'Copy',
+                            onPressed: _showCopyDialog,
+                          ),
+                        ),
+                        SizedBox(
+                          width: itemWidth,
+                          child: _buildActionButton(
+                            context: context,
+                            icon: Icons.edit_outlined,
+                            label: 'Rename',
+                            onPressed: practice.isSystem ? null : _showRenameDialog,
+                          ),
+                        ),
+                        SizedBox(
+                          width: itemWidth,
+                          child: _buildActionButton(
+                            context: context,
+                            icon: Icons.delete_outline,
+                            label: 'Delete',
+                            isDestructive: true,
+                            onPressed: practice.isSystem ? null : _showDeleteDialog,
+                          ),
+                        ),
+                      ],
+                    );
+                  },
                 ),
                 const SizedBox(height: 24),
 
                 // 4. Grouped 16-Segment Checklist (S01–S16)
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                Wrap(
+                  alignment: WrapAlignment.spaceBetween,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: 12,
+                  runSpacing: 4,
                   children: [
-                    const Text(
+                    Text(
                       'Clinical Arc Segments',
                       style: TextStyle(
                         fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.textBlack,
+                        fontWeight: FontWeight.w500,
+                        color: colorScheme.onSurface,
                       ),
                     ),
                     if (practice.isSystem)
-                      const Text(
+                      Text(
                         'Read-Only System Practice',
                         style: TextStyle(
-                          fontSize: 11,
+                          fontSize: 12,
                           fontWeight: FontWeight.w600,
-                          color: AppColors.systemBlue,
+                          color: semantic.systemPractice,
                         ),
                       ),
                   ],
@@ -1134,97 +1149,86 @@ class _ManagePracticesScreenState extends State<ManagePracticesScreen> {
                   final phaseTitle = entry.key;
                   final segmentCodes = entry.value;
 
-                  return Container(
-                    margin: const EdgeInsets.only(bottom: 14),
-                    decoration: BoxDecoration(
-                      color: AppColors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: AppColors.cardBorder.withValues(alpha: 0.6),
-                      ),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: AppColors.cardShadow,
-                          blurRadius: 6,
-                          offset: Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Phase Header
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 12, 16, 6),
-                          child: Text(
-                            phaseTitle,
-                            style: const TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.darkOlive,
-                              letterSpacing: 0.4,
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 14),
+                    child: Card(
+                      clipBehavior: Clip.antiAlias,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Phase Header
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                            child: Text(
+                              phaseTitle,
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: colorScheme.primary,
+                                letterSpacing: 0.4,
+                              ),
                             ),
                           ),
-                        ),
-                        const Divider(color: AppColors.cardBorder, height: 1),
+                          const Divider(),
 
-                        // Segment Rows
-                        ...segmentCodes.map((code) {
-                          final meta = kSegmentMetadata[code];
-                          final isRequired = kMandatorySegmentIds.contains(code);
-                          final isChecked = isRequired || practice.segmentIds.contains(code);
-                          final isInteractive = !practice.isSystem && !isRequired;
+                          // Segment Rows
+                          ...segmentCodes.map((code) {
+                            final meta = kSegmentMetadata[code];
+                            final isRequired = kMandatorySegmentIds.contains(code);
+                            final isChecked = isRequired || practice.segmentIds.contains(code);
+                            final isInteractive = !practice.isSystem && !isRequired;
 
-                          return InkWell(
-                            onTap: () => _showSegmentDetail(code),
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 10,
-                                vertical: 6,
-                              ),
-                              child: Row(
-                                children: [
-                                  // Checkbox
-                                  Checkbox(
-                                    value: isChecked,
-                                    activeColor: AppColors.darkOlive,
-                                    onChanged: isInteractive
-                                        ? (val) => _toggleSegment(code, val)
-                                        : null,
-                                  ),
+                            return InkWell(
+                              onTap: () => _showSegmentDetail(code),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 6,
+                                ),
+                                child: Row(
+                                  children: [
+                                    // Checkbox
+                                    Checkbox(
+                                      value: isChecked,
+                                      activeColor: colorScheme.primary,
+                                      onChanged: isInteractive
+                                          ? (val) => _toggleSegment(code, val)
+                                          : null,
+                                    ),
 
-                                  // Code & Title (clean - no required bubbles)
-                                  Expanded(
-                                    child: Text(
-                                      '$code • ${meta?['title'] ?? code}',
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: isChecked
-                                            ? FontWeight.w600
-                                            : FontWeight.normal,
-                                        color: isChecked
-                                            ? AppColors.textBlack
-                                            : AppColors.textMuted,
+                                    // Code & Title
+                                    Expanded(
+                                      child: Text(
+                                        '$code • ${meta?['title'] ?? code}',
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: isChecked
+                                              ? FontWeight.w500
+                                              : FontWeight.normal,
+                                          color: isChecked
+                                              ? colorScheme.onSurface
+                                              : semantic.muted,
+                                        ),
                                       ),
                                     ),
-                                  ),
 
-                                  // Info Icon
-                                  IconButton(
-                                    icon: const Icon(
-                                      Icons.info_outline,
-                                      size: 20,
-                                      color: AppColors.darkOlive,
+                                    // Info Icon
+                                    IconButton(
+                                      icon: Icon(
+                                        Icons.info_outline,
+                                        size: 20,
+                                        color: colorScheme.primary,
+                                      ),
+                                      onPressed: () => _showSegmentDetail(code),
+                                      splashRadius: 18,
                                     ),
-                                    onPressed: () => _showSegmentDetail(code),
-                                    splashRadius: 18,
-                                  ),
-                                ],
+                                  ],
+                                ),
                               ),
-                            ),
-                          );
-                        }),
-                      ],
+                            );
+                          }),
+                        ],
+                      ),
                     ),
                   );
                 }),

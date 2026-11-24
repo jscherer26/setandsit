@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'package:audioplayers_platform_interface/audioplayers_platform_interface.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -334,7 +334,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      final auditionBtn = find.widgetWithText(ElevatedButton, 'Audition Voice');
+      final auditionBtn = find.widgetWithText(FilledButton, 'Audition Voice');
       expect(auditionBtn, findsOneWidget);
 
       await tester.tap(auditionBtn);
@@ -342,14 +342,14 @@ void main() {
       await tester.pump(const Duration(milliseconds: 100));
 
       // Should now show Stop Audition
-      expect(find.widgetWithText(ElevatedButton, 'Stop Audition'), findsOneWidget);
+      expect(find.widgetWithText(FilledButton, 'Stop Audition'), findsOneWidget);
 
       // Tap again to stop
-      await tester.tap(find.widgetWithText(ElevatedButton, 'Stop Audition'));
+      await tester.tap(find.widgetWithText(FilledButton, 'Stop Audition'));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
 
-      expect(find.widgetWithText(ElevatedButton, 'Audition Voice'), findsOneWidget);
+      expect(find.widgetWithText(FilledButton, 'Audition Voice'), findsOneWidget);
     });
 
     testWidgets('Active audition playback stops immediately when switching voice, segment, or variant',
@@ -385,9 +385,9 @@ void main() {
       await tester.pumpAndSettle();
 
       // Start audition
-      await tester.tap(find.widgetWithText(ElevatedButton, 'Audition Voice'));
+      await tester.tap(find.widgetWithText(FilledButton, 'Audition Voice'));
       await tester.pump();
-      expect(find.widgetWithText(ElevatedButton, 'Stop Audition'), findsOneWidget);
+      expect(find.widgetWithText(FilledButton, 'Stop Audition'), findsOneWidget);
 
       // Switching voice stops audition immediately
       final nextVoiceBtn = find.descendant(
@@ -396,7 +396,7 @@ void main() {
       );
       await tester.tap(nextVoiceBtn);
       await tester.pump();
-      expect(find.widgetWithText(ElevatedButton, 'Audition Voice'), findsOneWidget);
+      expect(find.widgetWithText(FilledButton, 'Audition Voice'), findsOneWidget);
 
       // Tap previous to switch back to Grace so audition has valid audio
       final prevVoiceBtn = find.descendant(
@@ -407,25 +407,25 @@ void main() {
       await tester.pump();
 
       // Start audition again
-      await tester.tap(find.widgetWithText(ElevatedButton, 'Audition Voice'));
+      await tester.tap(find.widgetWithText(FilledButton, 'Audition Voice'));
       await tester.pump();
-      expect(find.widgetWithText(ElevatedButton, 'Stop Audition'), findsOneWidget);
+      expect(find.widgetWithText(FilledButton, 'Stop Audition'), findsOneWidget);
 
       // Stepping segment stops audition immediately
       final rightChevrons = find.byIcon(Icons.chevron_right);
       await tester.tap(rightChevrons.at(1));
       await tester.pump();
-      expect(find.widgetWithText(ElevatedButton, 'Audition Voice'), findsOneWidget);
+      expect(find.widgetWithText(FilledButton, 'Audition Voice'), findsOneWidget);
 
       // Start audition again
-      await tester.tap(find.widgetWithText(ElevatedButton, 'Audition Voice'));
+      await tester.tap(find.widgetWithText(FilledButton, 'Audition Voice'));
       await tester.pump();
-      expect(find.widgetWithText(ElevatedButton, 'Stop Audition'), findsOneWidget);
+      expect(find.widgetWithText(FilledButton, 'Stop Audition'), findsOneWidget);
 
       // Stepping variant stops audition immediately
       await tester.tap(rightChevrons.at(2));
       await tester.pump();
-      expect(find.widgetWithText(ElevatedButton, 'Audition Voice'), findsOneWidget);
+      expect(find.widgetWithText(FilledButton, 'Audition Voice'), findsOneWidget);
     });
   });
 

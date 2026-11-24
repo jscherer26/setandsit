@@ -1,4 +1,5 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
+import '../services/preferences_service.dart';
 import '../theme/app_theme.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -6,6 +7,13 @@ class SettingsScreen extends StatefulWidget {
   final double instructionDensity;
   final double redirectionDensity;
   final int preparationDelaySeconds;
+  final ThemeMode themeMode;
+  final int fontSizePx;
+  final ValueChanged<ThemeMode>? onThemeModeChanged;
+  final ValueChanged<int>? onFontSizePxChanged;
+  final bool isDeveloperMode;
+  final int stagedVariantsCount;
+  final VoidCallback? onDisableDeveloperMode;
   final ValueChanged<int> onPracticeDurationChanged;
   final ValueChanged<double> onInstructionDensityChanged;
   final ValueChanged<double> onRedirectionDensityChanged;
@@ -22,6 +30,13 @@ class SettingsScreen extends StatefulWidget {
     required this.instructionDensity,
     required this.redirectionDensity,
     this.preparationDelaySeconds = 3,
+    this.themeMode = ThemeMode.system,
+    this.fontSizePx = PreferencesService.defaultFontSizePx,
+    this.onThemeModeChanged,
+    this.onFontSizePxChanged,
+    this.isDeveloperMode = false,
+    this.stagedVariantsCount = 0,
+    this.onDisableDeveloperMode,
     required this.onPracticeDurationChanged,
     required this.onInstructionDensityChanged,
     required this.onRedirectionDensityChanged,
@@ -195,8 +210,36 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  Widget _buildLeadingCircle({
+    required BuildContext context,
+    required IconData icon,
+    Color? iconColor,
+  }) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final semantic = AppSemanticColors.of(context);
+    return Container(
+      width: 42,
+      height: 42,
+      decoration: BoxDecoration(
+        color: semantic.sandSurface,
+        shape: BoxShape.circle,
+      ),
+      child: Icon(
+        icon,
+        color: iconColor ?? colorScheme.primary,
+        size: 22,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final semantic = AppSemanticColors.of(context);
+    final hasManagementLinks = widget.onOpenManagePractices != null ||
+        widget.onOpenManageVoices != null ||
+        widget.onOpenBellSettings != null;
+
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, _) {
@@ -207,513 +250,581 @@ class _SettingsScreenState extends State<SettingsScreen> {
         onTap: () => FocusScope.of(context).unfocus(),
         behavior: HitTestBehavior.opaque,
         child: Scaffold(
-        backgroundColor: AppColors.background,
-        body: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-            child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Top Bar
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          backgroundColor: colorScheme.surface,
+          appBar: AppBar(
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back),
+              onPressed: _handleBack,
+            ),
+            title: const Text('Settings'),
+          ),
+          body: SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Settings',
+                  Text(
+                    'Defaults',
                     style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.textBlack,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: semantic.muted,
                     ),
                   ),
-                  Container(
-                    width: 44,
-                    height: 44,
-                    decoration: const BoxDecoration(
-                      color: AppColors.white,
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppColors.cardShadow,
-                          blurRadius: 8,
-                          offset: Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: IconButton(
-                      icon: const Icon(Icons.arrow_back, color: AppColors.textBlack, size: 22),
-                      onPressed: _handleBack,
+                  const SizedBox(height: 8),
+
+                  // 1. Defaults Card (Duration & Delay)
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Row 1: Practice Duration
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  'Practice Duration',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w500,
+                                    color: colorScheme.onSurface,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              ConstrainedBox(
+                                constraints: const BoxConstraints(
+                                  minWidth: 104,
+                                  maxWidth: 136,
+                                  minHeight: 46,
+                                ),
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    color: semantic.sandSurface,
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: _errorMessage != null
+                                          ? colorScheme.error
+                                          : colorScheme.outlineVariant,
+                                      width: _errorMessage != null ? 1.5 : 1.0,
+                                    ),
+                                  ),
+                                  child: TextField(
+                                    controller: _durationController,
+                                    focusNode: _durationFocusNode,
+                                    keyboardType: TextInputType.number,
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                      color: _errorMessage != null
+                                          ? colorScheme.error
+                                          : colorScheme.primary,
+                                    ),
+                                    decoration: InputDecoration(
+                                      isDense: true,
+                                      border: InputBorder.none,
+                                      contentPadding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 11,
+                                      ),
+                                      suffixText: 'min',
+                                      suffixStyle: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w500,
+                                        color: semantic.muted,
+                                      ),
+                                    ),
+                                    onChanged: (val) {
+                                      final trimmed = val.trim();
+                                      final parsed = int.tryParse(trimmed);
+                                      if (parsed != null && parsed >= 1 && parsed <= 90) {
+                                        setState(() {
+                                          _errorMessage = null;
+                                        });
+                                        widget.onPracticeDurationChanged(parsed);
+                                      } else {
+                                        _validateDuration();
+                                      }
+                                    },
+                                    onSubmitted: (_) => _validateDuration(),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+
+                          if (_errorMessage != null) ...[
+                            const SizedBox(height: 6),
+                            Text(
+                              _errorMessage!,
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: colorScheme.error,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+
+                          const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 14),
+                            child: Divider(),
+                          ),
+
+                          // Row 2: Practice Delay
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  'Practice Delay',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w500,
+                                    color: colorScheme.onSurface,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              ConstrainedBox(
+                                constraints: const BoxConstraints(
+                                  minWidth: 104,
+                                  maxWidth: 136,
+                                  minHeight: 46,
+                                ),
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    color: semantic.sandSurface,
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: _delayErrorMessage != null
+                                          ? colorScheme.error
+                                          : colorScheme.outlineVariant,
+                                      width: _delayErrorMessage != null ? 1.5 : 1.0,
+                                    ),
+                                  ),
+                                  child: TextField(
+                                    controller: _delayController,
+                                    focusNode: _delayFocusNode,
+                                    keyboardType: TextInputType.number,
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                      color: _delayErrorMessage != null
+                                          ? colorScheme.error
+                                          : colorScheme.primary,
+                                    ),
+                                    decoration: InputDecoration(
+                                      isDense: true,
+                                      border: InputBorder.none,
+                                      contentPadding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 11,
+                                      ),
+                                      suffixText: 'sec',
+                                      suffixStyle: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w500,
+                                        color: semantic.muted,
+                                      ),
+                                    ),
+                                    onChanged: (val) {
+                                      final trimmed = val.trim();
+                                      final parsed = int.tryParse(trimmed);
+                                      if (parsed != null && parsed >= 0 && parsed <= 20) {
+                                        setState(() {
+                                          _delayErrorMessage = null;
+                                        });
+                                        widget.onPreparationDelayChanged(parsed);
+                                      } else {
+                                        _validateDelay();
+                                      }
+                                    },
+                                    onSubmitted: (_) => _validateDelay(),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+
+                          const SizedBox(height: 8),
+                          Text(
+                            'The guidance will start this many seconds after "Begin Practice" is pressed.',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: semantic.muted,
+                            ),
+                          ),
+
+                          if (_delayErrorMessage != null) ...[
+                            const SizedBox(height: 6),
+                            Text(
+                              _delayErrorMessage!,
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: colorScheme.error,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
                     ),
                   ),
-                ],
-              ),
-              const SizedBox(height: 24),
 
-              const Text(
-                'Defaults',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textMuted,
-                ),
-              ),
-              const SizedBox(height: 8),
+                  // 2. Practice & Audio Management Card
+                  if (hasManagementLinks) ...[
+                    const SizedBox(height: 18),
+                    Card(
+                      clipBehavior: Clip.antiAlias,
+                      child: Column(
+                        children: [
+                          if (widget.onOpenManagePractices != null)
+                            ListTile(
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 20,
+                                vertical: 4,
+                              ),
+                              leading: _buildLeadingCircle(
+                                context: context,
+                                icon: Icons.self_improvement,
+                              ),
+                              title: Text(
+                                'Manage Practices',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w500,
+                                  color: colorScheme.onSurface,
+                                ),
+                              ),
+                              subtitle: Text(
+                                'Create, copy, and customize clinical meditation practices',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: semantic.muted,
+                                ),
+                              ),
+                              trailing: Icon(
+                                Icons.chevron_right,
+                                color: semantic.muted,
+                              ),
+                              onTap: () {
+                                _handleNavigationSilently();
+                                widget.onOpenManagePractices!();
+                              },
+                            ),
 
-              // Top Bubble: Defaults (Duration, Delay, Density)
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: AppColors.white,
-                  borderRadius: BorderRadius.circular(24),
-                  border: Border.all(color: AppColors.cardBorder),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: AppColors.cardShadow,
-                      blurRadius: 10,
-                      offset: Offset(0, 4),
-                    )
+                          if (widget.onOpenManageVoices != null) ...[
+                            if (widget.onOpenManagePractices != null)
+                              const Divider(indent: 20, endIndent: 20),
+                            ListTile(
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 20,
+                                vertical: 4,
+                              ),
+                              leading: _buildLeadingCircle(
+                                context: context,
+                                icon: Icons.record_voice_over,
+                              ),
+                              title: Text(
+                                'Manage Voices',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w500,
+                                  color: colorScheme.onSurface,
+                                ),
+                              ),
+                              subtitle: Text(
+                                'Browse voices, inspect script variants, and audition audio',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: semantic.muted,
+                                ),
+                              ),
+                              trailing: Icon(
+                                Icons.chevron_right,
+                                color: semantic.muted,
+                              ),
+                              onTap: () {
+                                _handleNavigationSilently();
+                                widget.onOpenManageVoices!();
+                              },
+                            ),
+                          ],
+
+                          if ((widget.onOpenManagePractices != null ||
+                                  widget.onOpenManageVoices != null) &&
+                              widget.onOpenBellSettings != null)
+                            const Divider(indent: 20, endIndent: 20),
+
+                          if (widget.onOpenBellSettings != null)
+                            ListTile(
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 20,
+                                vertical: 4,
+                              ),
+                              leading: _buildLeadingCircle(
+                                context: context,
+                                icon: Icons.notifications_active_outlined,
+                              ),
+                              title: Text(
+                                'Manage Bells',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w500,
+                                  color: colorScheme.onSurface,
+                                ),
+                              ),
+                              subtitle: Text(
+                                'Select and configure acoustic meditation bells',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: semantic.muted,
+                                ),
+                              ),
+                              trailing: Icon(
+                                Icons.chevron_right,
+                                color: semantic.muted,
+                              ),
+                              onTap: () {
+                                _handleNavigationSilently();
+                                widget.onOpenBellSettings!();
+                              },
+                            ),
+                        ],
+                      ),
+                    ),
                   ],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Row 1: Practice Duration
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        const Expanded(
-                          child: Text(
-                            'Practice Duration',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.textBlack,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Container(
-                          width: 100,
-                          height: 46,
-                          decoration: BoxDecoration(
-                            color: AppColors.backgroundSand,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: _errorMessage != null
-                                  ? AppColors.errorRed
-                                  : AppColors.cardBorder
-                                      .withValues(alpha: 0.6),
-                              width: _errorMessage != null ? 1.5 : 1.0,
-                            ),
-                          ),
-                          child: TextField(
-                            controller: _durationController,
-                            focusNode: _durationFocusNode,
-                            keyboardType: TextInputType.number,
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: _errorMessage != null
-                                  ? AppColors.errorRed
-                                  : AppColors.darkOlive,
-                            ),
-                            decoration: const InputDecoration(
-                              border: InputBorder.none,
-                              contentPadding: EdgeInsets.symmetric(
-                                horizontal: 6,
-                                vertical: 12,
-                              ),
-                              suffixText: 'min',
-                              suffixStyle: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.textMuted,
-                              ),
-                            ),
-                            onChanged: (val) {
-                              final trimmed = val.trim();
-                              final parsed = int.tryParse(trimmed);
-                              if (parsed != null && parsed >= 1 && parsed <= 90) {
-                                setState(() {
-                                  _errorMessage = null;
-                                });
-                                widget.onPracticeDurationChanged(parsed);
-                              } else {
-                                _validateDuration();
-                              }
-                            },
-                            onSubmitted: (_) => _validateDuration(),
-                          ),
-                        ),
-                      ],
+
+                  // 3. Display & Appearance Card
+                  const SizedBox(height: 18),
+                  Text(
+                    'Display & Appearance',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: semantic.muted,
                     ),
-
-                    if (_errorMessage != null) ...[
-                      const SizedBox(height: 6),
-                      Text(
-                        _errorMessage!,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: AppColors.errorRed,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-
-                    const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 14),
-                      child: Divider(
-                        color: AppColors.cardBorder,
-                        height: 1,
-                      ),
-                    ),
-
-                    // Row 2: Practice Delay
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        const Expanded(
-                          child: Text(
-                            'Practice Delay',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.textBlack,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Container(
-                          width: 100,
-                          height: 46,
-                          decoration: BoxDecoration(
-                            color: AppColors.backgroundSand,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: _delayErrorMessage != null
-                                  ? AppColors.errorRed
-                                  : AppColors.cardBorder
-                                      .withValues(alpha: 0.6),
-                              width: _delayErrorMessage != null ? 1.5 : 1.0,
-                            ),
-                          ),
-                          child: TextField(
-                            controller: _delayController,
-                            focusNode: _delayFocusNode,
-                            keyboardType: TextInputType.number,
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: _delayErrorMessage != null
-                                  ? AppColors.errorRed
-                                  : AppColors.darkOlive,
-                            ),
-                            decoration: const InputDecoration(
-                              border: InputBorder.none,
-                              contentPadding: EdgeInsets.symmetric(
-                                horizontal: 6,
-                                vertical: 12,
-                              ),
-                              suffixText: 'sec',
-                              suffixStyle: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.textMuted,
-                              ),
-                            ),
-                            onChanged: (val) {
-                              final trimmed = val.trim();
-                              final parsed = int.tryParse(trimmed);
-                              if (parsed != null && parsed >= 0 && parsed <= 20) {
-                                setState(() {
-                                  _delayErrorMessage = null;
-                                });
-                                widget.onPreparationDelayChanged(parsed);
-                              } else {
-                                _validateDelay();
-                              }
-                            },
-                            onSubmitted: (_) => _validateDelay(),
-                          ),
-                        ),
-                      ],
-                    ),
-
-                    const SizedBox(height: 8),
-                    const Text(
-                      'The guidance will start this many seconds after  "Begin Practice" is pressed.',
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: AppColors.textMuted,
-                      ),
-                    ),
-
-                    if (_delayErrorMessage != null) ...[
-                      const SizedBox(height: 6),
-                      Text(
-                        _delayErrorMessage!,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: AppColors.errorRed,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-
-              if (widget.onOpenManagePractices != null || widget.onOpenBellSettings != null) ...[
-                const SizedBox(height: 18),
-
-                // Bubble 3: Configuration & Practice Management Section
-                Container(
-                  decoration: BoxDecoration(
-                    color: AppColors.white,
-                    borderRadius: BorderRadius.circular(24),
-                    border: Border.all(color: AppColors.cardBorder),
-                    boxShadow: const [
-                      BoxShadow(
-                        color: AppColors.cardShadow,
-                        blurRadius: 10,
-                        offset: Offset(0, 4),
-                      ),
-                    ],
                   ),
-                  child: Material(
-                    color: Colors.transparent,
-                    borderRadius: BorderRadius.circular(24),
-                    clipBehavior: Clip.antiAlias,
-                    child: Column(
-                      children: [
-                        if (widget.onOpenManagePractices != null)
-                          ListTile(
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 20,
-                              vertical: 4,
+                  const SizedBox(height: 8),
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Theme',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
+                              color: colorScheme.onSurface,
                             ),
-                            leading: Container(
-                              width: 42,
-                              height: 42,
-                              decoration: const BoxDecoration(
-                                color: AppColors.backgroundSand,
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(
-                                Icons.self_improvement,
-                                color: AppColors.darkOlive,
-                                size: 22,
-                              ),
+                          ),
+                          const SizedBox(height: 10),
+                          SizedBox(
+                            width: double.infinity,
+                            child: SegmentedButton<ThemeMode>(
+                              showSelectedIcon: false,
+                              segments: const [
+                                ButtonSegment<ThemeMode>(
+                                  value: ThemeMode.system,
+                                  label: FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    child: Text('System', maxLines: 1),
+                                  ),
+                                ),
+                                ButtonSegment<ThemeMode>(
+                                  value: ThemeMode.light,
+                                  label: FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    child: Text('Light', maxLines: 1),
+                                  ),
+                                ),
+                                ButtonSegment<ThemeMode>(
+                                  value: ThemeMode.dark,
+                                  label: FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    child: Text('Dark', maxLines: 1),
+                                  ),
+                                ),
+                              ],
+                              selected: {widget.themeMode},
+                              onSelectionChanged: (selection) {
+                                if (selection.isNotEmpty) {
+                                  widget.onThemeModeChanged?.call(selection.first);
+                                }
+                              },
                             ),
-                            title: const Text(
-                              'Manage Practices',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.textBlack,
-                              ),
-                            ),
-                            subtitle: const Text(
-                              'Create, copy, and customize clinical meditation practices',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: AppColors.textMuted,
-                              ),
-                            ),
-                            trailing: const Icon(
-                              Icons.chevron_right,
-                              color: AppColors.textMuted,
-                            ),
-                            onTap: () {
-                              _handleNavigationSilently();
-                              widget.onOpenManagePractices!();
-                            },
                           ),
 
-                        if (widget.onOpenManageVoices != null) ...[
-                          const Divider(
-                            color: AppColors.cardBorder,
-                            height: 1,
-                            indent: 20,
-                            endIndent: 20,
+                          const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 16),
+                            child: Divider(),
                           ),
-                          ListTile(
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 20,
-                              vertical: 4,
+
+                          Text(
+                            'Text Size',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
+                              color: colorScheme.onSurface,
                             ),
-                            leading: Container(
-                              width: 42,
-                              height: 42,
-                              decoration: const BoxDecoration(
-                                color: AppColors.backgroundSand,
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(
-                                Icons.record_voice_over,
-                                color: AppColors.darkOlive,
-                                size: 22,
-                              ),
-                            ),
-                            title: const Text(
-                              'Manage Voices',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.textBlack,
-                              ),
-                            ),
-                            subtitle: const Text(
-                              'Browse voices, inspect script variants, and audition audio',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: AppColors.textMuted,
-                              ),
-                            ),
-                            trailing: const Icon(
-                              Icons.chevron_right,
-                              color: AppColors.textMuted,
-                            ),
-                            onTap: () {
-                              _handleNavigationSilently();
-                              widget.onOpenManageVoices!();
-                            },
+                          ),
+                          const SizedBox(height: 10),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: PreferencesService.allowedFontSizes.map((px) {
+                              final isSelected = widget.fontSizePx == px;
+                              return ChoiceChip(
+                                label: Text('${px}px'),
+                                selected: isSelected,
+                                onSelected: (selected) {
+                                  if (selected) {
+                                    widget.onFontSizePxChanged?.call(px);
+                                  }
+                                },
+                              );
+                            }).toList(),
                           ),
                         ],
+                      ),
+                    ),
+                  ),
 
-                        if ((widget.onOpenManagePractices != null || widget.onOpenManageVoices != null) &&
-                            widget.onOpenBellSettings != null)
-                          const Divider(
-                            color: AppColors.cardBorder,
-                            height: 1,
-                            indent: 20,
-                            endIndent: 20,
+                  // 4. About Card
+                  if (widget.onOpenAbout != null) ...[
+                    const SizedBox(height: 18),
+                    Card(
+                      clipBehavior: Clip.antiAlias,
+                      child: ListTile(
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 4,
+                        ),
+                        leading: _buildLeadingCircle(
+                          context: context,
+                          icon: Icons.info_outline,
+                        ),
+                        title: Text(
+                          'About Set&Sit',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                            color: colorScheme.onSurface,
                           ),
+                        ),
+                        subtitle: Text(
+                          'App info, mission, feedback, and licenses',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: semantic.muted,
+                          ),
+                        ),
+                        trailing: Icon(
+                          Icons.chevron_right,
+                          color: semantic.muted,
+                        ),
+                        onTap: () {
+                          _handleNavigationSilently();
+                          widget.onOpenAbout!();
+                        },
+                      ),
+                    ),
+                  ],
 
-                        if (widget.onOpenBellSettings != null)
-                          ListTile(
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 20,
-                              vertical: 4,
-                            ),
-                            leading: Container(
-                              width: 42,
-                              height: 42,
-                              decoration: const BoxDecoration(
-                                color: AppColors.backgroundSand,
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(
-                                Icons.notifications_active_outlined,
-                                color: AppColors.darkOlive,
-                                size: 22,
-                              ),
-                            ),
-                            title: const Text(
-                              'Manage Bells',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.textBlack,
-                              ),
-                            ),
-                            subtitle: const Text(
-                              'Select and configure acoustic meditation bells',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: AppColors.textMuted,
-                              ),
-                            ),
-                            trailing: const Icon(
-                              Icons.chevron_right,
-                              color: AppColors.textMuted,
-                            ),
-                            onTap: () {
-                              _handleNavigationSilently();
-                              widget.onOpenBellSettings!();
-                            },
+                  // 5. Developer Mode Card (strictly last, behind amber divider, only when active)
+                  if (widget.isDeveloperMode) ...[
+                    const SizedBox(height: 20),
+                    Row(
+                      children: [
+                        Text(
+                          'Developer Mode',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: semantic.warning,
                           ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Divider(
+                            color: semantic.warning.withValues(alpha: 0.45),
+                          ),
+                        ),
                       ],
                     ),
-                  ),
-                ),
-              ],
+                    const SizedBox(height: 10),
+                    Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(20),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                _buildLeadingCircle(
+                                  context: context,
+                                  icon: Icons.developer_mode,
+                                  iconColor: semantic.warning,
+                                ),
+                                const SizedBox(width: 14),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Staged Audio Overrides Active',
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w500,
+                                          color: colorScheme.onSurface,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        'Staged variants loaded: ${widget.stagedVariantsCount}',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: semantic.muted,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                            if (widget.onDisableDeveloperMode != null) ...[
+                              const SizedBox(height: 14),
+                              SizedBox(
+                                width: double.infinity,
+                                child: OutlinedButton(
+                                  onPressed: widget.onDisableDeveloperMode,
+                                  child: const Text('Disable Developer Mode'),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
 
-              // Separate About Card
-              if (widget.onOpenAbout != null) ...[
-                const SizedBox(height: 18),
-                Container(
-                  decoration: BoxDecoration(
-                    color: AppColors.white,
-                    borderRadius: BorderRadius.circular(24),
-                    border: Border.all(color: AppColors.cardBorder),
-                    boxShadow: const [
-                      BoxShadow(
-                        color: AppColors.cardShadow,
-                        blurRadius: 10,
-                        offset: Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: Material(
-                    color: Colors.transparent,
-                    borderRadius: BorderRadius.circular(24),
-                    clipBehavior: Clip.antiAlias,
-                    child: ListTile(
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 20,
-                        vertical: 4,
-                      ),
-                    leading: Container(
-                      width: 42,
-                      height: 42,
-                      decoration: const BoxDecoration(
-                        color: AppColors.backgroundSand,
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.info_outline,
-                        color: AppColors.darkOlive,
-                        size: 22,
-                      ),
-                    ),
-                    title: const Text(
-                      'About Set&Sit',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.textBlack,
-                      ),
-                    ),
-                    subtitle: const Text(
-                      'App info, mission, feedback, and licenses',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: AppColors.textMuted,
-                      ),
-                    ),
-                    trailing: const Icon(
-                      Icons.chevron_right,
-                      color: AppColors.textMuted,
-                    ),
-                    onTap: () {
-                      _handleNavigationSilently();
-                      widget.onOpenAbout!();
-                    },
-                  ),
-                ),
-                ),
-              ],
-            ],
+                  const SizedBox(height: 24),
+                ],
+              ),
+            ),
           ),
         ),
       ),
-    ),
-    ),
     );
   }
 }

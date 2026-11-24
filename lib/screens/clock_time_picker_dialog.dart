@@ -1,5 +1,5 @@
 import 'dart:math';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import '../theme/app_theme.dart';
 
 enum _DialMode { hour, minute }
@@ -149,6 +149,9 @@ class _ClockTimePickerDialogState extends State<ClockTimePickerDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final semantic = AppSemanticColors.of(context);
+
     final diffMins = _diffMinutes;
     final isNegative = diffMins <= 0;
     final isTooLong = diffMins > 90;
@@ -165,157 +168,160 @@ class _ClockTimePickerDialogState extends State<ClockTimePickerDialog> {
       durationText = '$diffMins min practice';
     }
 
-    final statusColor = isValid ? AppColors.darkOlive : const Color(0xFFD32F2F);
+    final statusColor = isValid ? colorScheme.primary : colorScheme.error;
     final statusBg = isValid
-        ? AppColors.darkOlive.withValues(alpha: 0.08)
-        : const Color(0xFFD32F2F).withValues(alpha: 0.12);
+        ? colorScheme.primary.withValues(alpha: 0.1)
+        : colorScheme.error.withValues(alpha: 0.12);
 
     return Dialog(
-      backgroundColor: AppColors.white,
+      backgroundColor: colorScheme.surfaceContainerLow,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
-      insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
-      child: Padding(
+      insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+      child: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text(
+            Text(
               'Select Finish Time',
               style: TextStyle(
                 fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textMuted,
+                fontWeight: FontWeight.w500,
+                color: semantic.muted,
               ),
             ),
             const SizedBox(height: 14),
 
             // Digital Time Display & AM/PM Selector
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                // Hour Box
-                GestureDetector(
-                  onTap: () => setState(() => _mode = _DialMode.hour),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: _mode == _DialMode.hour
-                          ? AppColors.darkOlive.withValues(alpha: 0.12)
-                          : AppColors.backgroundSand,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // Hour Box
+                  GestureDetector(
+                    onTap: () => setState(() => _mode = _DialMode.hour),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                      decoration: BoxDecoration(
                         color: _mode == _DialMode.hour
-                            ? AppColors.darkOlive
-                            : Colors.transparent,
-                        width: 1.5,
+                            ? colorScheme.primary.withValues(alpha: 0.14)
+                            : semantic.sandSurface,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: _mode == _DialMode.hour
+                              ? colorScheme.primary
+                              : Colors.transparent,
+                          width: 1.5,
+                        ),
+                      ),
+                      child: Text(
+                        _selectedHour.toString().padLeft(2, '0'),
+                        style: TextStyle(
+                          fontSize: 38,
+                          fontWeight: FontWeight.bold,
+                          color: colorScheme.onSurface,
+                          letterSpacing: -1,
+                        ),
                       ),
                     ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 6),
                     child: Text(
-                      _selectedHour.toString().padLeft(2, '0'),
-                      style: const TextStyle(
-                        fontSize: 38,
+                      ':',
+                      style: TextStyle(
+                        fontSize: 34,
                         fontWeight: FontWeight.bold,
-                        color: AppColors.textBlack,
-                        letterSpacing: -1,
+                        color: colorScheme.onSurface,
                       ),
                     ),
                   ),
-                ),
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 6),
-                  child: Text(
-                    ':',
-                    style: TextStyle(
-                      fontSize: 34,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.textBlack,
-                    ),
-                  ),
-                ),
-                // Minute Box
-                GestureDetector(
-                  onTap: () => setState(() => _mode = _DialMode.minute),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: _mode == _DialMode.minute
-                          ? AppColors.darkOlive.withValues(alpha: 0.12)
-                          : AppColors.backgroundSand,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
+                  // Minute Box
+                  GestureDetector(
+                    onTap: () => setState(() => _mode = _DialMode.minute),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                      decoration: BoxDecoration(
                         color: _mode == _DialMode.minute
-                            ? AppColors.darkOlive
-                            : Colors.transparent,
-                        width: 1.5,
+                            ? colorScheme.primary.withValues(alpha: 0.14)
+                            : semantic.sandSurface,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: _mode == _DialMode.minute
+                              ? colorScheme.primary
+                              : Colors.transparent,
+                          width: 1.5,
+                        ),
                       ),
-                    ),
-                    child: Text(
-                      _selectedMinute.toString().padLeft(2, '0'),
-                      style: const TextStyle(
-                        fontSize: 38,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.textBlack,
-                        letterSpacing: -1,
+                      child: Text(
+                        _selectedMinute.toString().padLeft(2, '0'),
+                        style: TextStyle(
+                          fontSize: 38,
+                          fontWeight: FontWeight.bold,
+                          color: colorScheme.onSurface,
+                          letterSpacing: -1,
+                        ),
                       ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 12),
+                  const SizedBox(width: 12),
 
-                // AM / PM Stacked Pill
-                Container(
-                  decoration: BoxDecoration(
-                    color: AppColors.backgroundSand,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: AppColors.circleBorder),
-                  ),
-                  child: Column(
-                    children: [
-                      GestureDetector(
-                        onTap: () => setState(() => _isAm = true),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: _isAm ? AppColors.darkOlive : Colors.transparent,
-                            borderRadius: const BorderRadius.vertical(top: Radius.circular(11)),
-                          ),
-                          child: Text(
-                            'AM',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              color: _isAm ? AppColors.buttonTextLight : AppColors.textMuted,
+                  // AM / PM Stacked Pill
+                  Container(
+                    decoration: BoxDecoration(
+                      color: semantic.sandSurface,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: colorScheme.outlineVariant),
+                    ),
+                    child: Column(
+                      children: [
+                        GestureDetector(
+                          onTap: () => setState(() => _isAm = true),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: _isAm ? colorScheme.primary : Colors.transparent,
+                              borderRadius: const BorderRadius.vertical(top: Radius.circular(11)),
+                            ),
+                            child: Text(
+                              'AM',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: _isAm ? colorScheme.onPrimary : semantic.muted,
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                      GestureDetector(
-                        onTap: () => setState(() => _isAm = false),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: !_isAm ? AppColors.darkOlive : Colors.transparent,
-                            borderRadius: const BorderRadius.vertical(bottom: Radius.circular(11)),
-                          ),
-                          child: Text(
-                            'PM',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              color: !_isAm ? AppColors.buttonTextLight : AppColors.textMuted,
+                        GestureDetector(
+                          onTap: () => setState(() => _isAm = false),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: !_isAm ? colorScheme.primary : Colors.transparent,
+                              borderRadius: const BorderRadius.vertical(bottom: Radius.circular(11)),
+                            ),
+                            child: Text(
+                              'PM',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: !_isAm ? colorScheme.onPrimary : semantic.muted,
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
 
             const SizedBox(height: 12),
 
-            // Live Session Length / Negative Indicator (No error dialog, red for negative times)
+            // Live Session Length / Negative Indicator
             AnimatedContainer(
               duration: const Duration(milliseconds: 150),
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
@@ -323,7 +329,7 @@ class _ClockTimePickerDialogState extends State<ClockTimePickerDialog> {
                 color: statusBg,
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
-                  color: isValid ? Colors.transparent : const Color(0xFFD32F2F).withValues(alpha: 0.3),
+                  color: isValid ? Colors.transparent : colorScheme.error.withValues(alpha: 0.3),
                 ),
               ),
               child: Row(
@@ -335,12 +341,14 @@ class _ClockTimePickerDialogState extends State<ClockTimePickerDialog> {
                     color: statusColor,
                   ),
                   const SizedBox(width: 6),
-                  Text(
-                    durationText,
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                      color: statusColor,
+                  Flexible(
+                    child: Text(
+                      durationText,
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        color: statusColor,
+                      ),
                     ),
                   ),
                 ],
@@ -367,11 +375,13 @@ class _ClockTimePickerDialogState extends State<ClockTimePickerDialog> {
                       painter: _ClockArmPainter(
                         angle: _currentAngle,
                         radius: _radius,
-                        armColor: AppColors.darkOlive,
+                        dialBgColor: semantic.clockDialSurface,
+                        armColor: colorScheme.primary,
+                        dotColor: colorScheme.onPrimary,
                         isMinuteNonFive: _mode == _DialMode.minute && _selectedMinute % 5 != 0,
                       ),
                     ),
-                    ..._buildDialNumbers(),
+                    ..._buildDialNumbers(colorScheme),
                   ],
                 ),
               ),
@@ -380,27 +390,24 @@ class _ClockTimePickerDialogState extends State<ClockTimePickerDialog> {
             const SizedBox(height: 20),
 
             // Action Buttons (Cancel / OK)
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
+            Wrap(
+              alignment: WrapAlignment.end,
+              spacing: 8,
+              runSpacing: 8,
               children: [
                 TextButton(
                   onPressed: () => Navigator.pop(context),
-                  child: const Text(
+                  child: Text(
                     'Cancel',
                     style: TextStyle(
-                      color: AppColors.textMuted,
-                      fontWeight: FontWeight.w600,
+                      color: semantic.muted,
+                      fontWeight: FontWeight.w500,
                       fontSize: 15,
                     ),
                   ),
                 ),
-                const SizedBox(width: 8),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.darkOlive,
-                    foregroundColor: AppColors.buttonTextLight,
-                    disabledBackgroundColor: AppColors.darkOlive.withValues(alpha: 0.25),
-                    disabledForegroundColor: AppColors.buttonTextLight.withValues(alpha: 0.5),
+                FilledButton(
+                  style: FilledButton.styleFrom(
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(20),
                     ),
@@ -420,7 +427,7 @@ class _ClockTimePickerDialogState extends State<ClockTimePickerDialog> {
                   child: const Text(
                     'OK',
                     style: TextStyle(
-                      fontWeight: FontWeight.bold,
+                      fontWeight: FontWeight.w500,
                       fontSize: 15,
                     ),
                   ),
@@ -433,7 +440,7 @@ class _ClockTimePickerDialogState extends State<ClockTimePickerDialog> {
     );
   }
 
-  List<Widget> _buildDialNumbers() {
+  List<Widget> _buildDialNumbers(ColorScheme colorScheme) {
     const center = Offset(_dialSize / 2, _dialSize / 2);
     final numbers = <Widget>[];
 
@@ -458,7 +465,7 @@ class _ClockTimePickerDialogState extends State<ClockTimePickerDialog> {
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                    color: isSelected ? AppColors.white : AppColors.textBlack,
+                    color: isSelected ? colorScheme.onPrimary : colorScheme.onSurface,
                   ),
                 ),
               ),
@@ -487,7 +494,7 @@ class _ClockTimePickerDialogState extends State<ClockTimePickerDialog> {
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                    color: isSelected ? AppColors.white : AppColors.textBlack,
+                    color: isSelected ? colorScheme.onPrimary : colorScheme.onSurface,
                   ),
                 ),
               ),
@@ -504,13 +511,17 @@ class _ClockTimePickerDialogState extends State<ClockTimePickerDialog> {
 class _ClockArmPainter extends CustomPainter {
   final double angle;
   final double radius;
+  final Color dialBgColor;
   final Color armColor;
+  final Color dotColor;
   final bool isMinuteNonFive;
 
   _ClockArmPainter({
     required this.angle,
     required this.radius,
+    required this.dialBgColor,
     required this.armColor,
+    required this.dotColor,
     this.isMinuteNonFive = false,
   });
 
@@ -524,7 +535,7 @@ class _ClockArmPainter extends CustomPainter {
 
     // Background clock dial circle
     final bgPaint = Paint()
-      ..color = const Color(0xFFF3F5F2)
+      ..color = dialBgColor
       ..style = PaintingStyle.fill;
     canvas.drawCircle(center, size.width / 2, bgPaint);
 
@@ -547,10 +558,10 @@ class _ClockArmPainter extends CustomPainter {
       ..style = PaintingStyle.fill;
     canvas.drawCircle(selectorCenter, 18.0, selectorPaint);
 
-    // Small white dot if minute is between 5-minute ticks
+    // Small center dot if minute is between 5-minute ticks
     if (isMinuteNonFive) {
       final dotPaint = Paint()
-        ..color = Colors.white
+        ..color = dotColor
         ..style = PaintingStyle.fill;
       canvas.drawCircle(selectorCenter, 3.0, dotPaint);
     }
@@ -560,7 +571,9 @@ class _ClockArmPainter extends CustomPainter {
   bool shouldRepaint(covariant _ClockArmPainter oldDelegate) {
     return oldDelegate.angle != angle ||
         oldDelegate.radius != radius ||
+        oldDelegate.dialBgColor != dialBgColor ||
         oldDelegate.armColor != armColor ||
+        oldDelegate.dotColor != dotColor ||
         oldDelegate.isMinuteNonFive != isMinuteNonFive;
   }
 }

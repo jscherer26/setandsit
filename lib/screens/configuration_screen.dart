@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import '../models/audio_models.dart';
 import '../models/practice_config.dart';
 import '../models/voice_config.dart';
@@ -117,6 +117,30 @@ class _ConfigurationScreenState extends State<ConfigurationScreen> {
     }
   }
 
+  void _submitPasscode(
+    BuildContext dialogContext,
+    String rawValue,
+    void Function(void Function()) setDialogState,
+    void Function(String) setError,
+  ) {
+    final colorScheme = Theme.of(context).colorScheme;
+    if (rawValue.trim() == '2217') {
+      Navigator.of(dialogContext).pop();
+      widget.onDeveloperModeChanged?.call(true);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Developer Mode enabled. Staged audio active.'),
+          backgroundColor: colorScheme.error,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    } else {
+      setDialogState(() {
+        setError('Incorrect passcode');
+      });
+    }
+  }
+
   Future<void> _showDeveloperModeDialog() async {
     if (widget.isDeveloperMode) {
       _showActiveDeveloperModeDialog();
@@ -130,111 +154,93 @@ class _ConfigurationScreenState extends State<ConfigurationScreen> {
       context: context,
       barrierDismissible: false,
       builder: (dialogContext) {
+        final colorScheme = Theme.of(dialogContext).colorScheme;
+        final semantic = AppSemanticColors.of(dialogContext);
         return StatefulBuilder(
           builder: (context, setDialogState) {
             return AlertDialog(
-              backgroundColor: AppColors.white,
+              backgroundColor: colorScheme.surfaceContainerLow,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(20),
               ),
-              title: const Row(
+              title: Row(
                 children: [
-                  Icon(Icons.developer_mode, color: AppColors.darkOlive),
-                  SizedBox(width: 8),
-                  Text(
-                    'Developer Mode',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.textBlack,
+                  Icon(Icons.developer_mode, color: semantic.warning),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Developer Mode',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w500,
+                        color: colorScheme.onSurface,
+                      ),
                     ),
                   ),
                 ],
               ),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Enter passcode to enable Developer Mode:',
-                    style: TextStyle(fontSize: 14, color: AppColors.textBlack),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: controller,
-                    autofocus: true,
-                    keyboardType: TextInputType.number,
-                    obscureText: true,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      fontSize: 20,
-                      letterSpacing: 6,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.darkOlive,
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Enter passcode to enable Developer Mode:',
+                      style: TextStyle(fontSize: 14, color: colorScheme.onSurface),
                     ),
-                    decoration: InputDecoration(
-                      filled: true,
-                      fillColor: AppColors.backgroundSand,
-                      errorText: errorText,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: AppColors.cardBorder),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: controller,
+                      autofocus: true,
+                      keyboardType: TextInputType.number,
+                      obscureText: true,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 20,
+                        letterSpacing: 6,
+                        fontWeight: FontWeight.bold,
+                        color: colorScheme.primary,
                       ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: AppColors.darkOlive, width: 2),
+                      decoration: InputDecoration(
+                        filled: true,
+                        fillColor: semantic.sandSurface,
+                        errorText: errorText,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: colorScheme.outlineVariant),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: colorScheme.primary, width: 2),
+                        ),
+                      ),
+                      onSubmitted: (val) => _submitPasscode(
+                        dialogContext,
+                        val,
+                        setDialogState,
+                        (msg) => errorText = msg,
                       ),
                     ),
-                    onSubmitted: (val) {
-                      if (val.trim() == '2217') {
-                        Navigator.of(dialogContext).pop();
-                        widget.onDeveloperModeChanged?.call(true);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Developer Mode enabled. Staged audio active.'),
-                            backgroundColor: Color(0xFFD32F2F),
-                            duration: Duration(seconds: 2),
-                          ),
-                        );
-                      } else {
-                        setDialogState(() {
-                          errorText = 'Incorrect passcode';
-                        });
-                      }
-                    },
-                  ),
-                ],
+                  ],
+                ),
               ),
               actions: [
                 TextButton(
                   onPressed: () => Navigator.of(dialogContext).pop(),
-                  child: const Text('Cancel', style: TextStyle(color: AppColors.textMuted)),
+                  child: Text('Cancel', style: TextStyle(color: semantic.muted)),
                 ),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.darkOlive,
-                    foregroundColor: AppColors.white,
+                FilledButton(
+                  style: FilledButton.styleFrom(
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  onPressed: () {
-                    if (controller.text.trim() == '2217') {
-                      Navigator.of(dialogContext).pop();
-                      widget.onDeveloperModeChanged?.call(true);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Developer Mode enabled. Staged audio active.'),
-                          backgroundColor: Color(0xFFD32F2F),
-                          duration: Duration(seconds: 2),
-                        ),
-                      );
-                    } else {
-                      setDialogState(() {
-                        errorText = 'Incorrect passcode';
-                      });
-                    }
-                  },
+                  onPressed: () => _submitPasscode(
+                    dialogContext,
+                    controller.text,
+                    setDialogState,
+                    (msg) => errorText = msg,
+                  ),
                   child: const Text('OK'),
                 ),
               ],
@@ -250,53 +256,59 @@ class _ConfigurationScreenState extends State<ConfigurationScreen> {
     await showDialog(
       context: context,
       builder: (dialogContext) {
+        final colorScheme = Theme.of(dialogContext).colorScheme;
+        final semantic = AppSemanticColors.of(dialogContext);
         return AlertDialog(
-          backgroundColor: AppColors.white,
+          backgroundColor: colorScheme.surfaceContainerLow,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
           ),
-          title: const Row(
+          title: Row(
             children: [
-              Icon(Icons.bug_report, color: Color(0xFFD32F2F)),
-              SizedBox(width: 8),
-              Text(
-                'Developer Mode Active',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textBlack,
+              Icon(Icons.bug_report, color: semantic.warning),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Developer Mode Active',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w500,
+                    color: colorScheme.onSurface,
+                  ),
                 ),
               ),
             ],
           ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Previewing staged script audio from /changes directories.',
-                style: TextStyle(fontSize: 14, color: AppColors.textBlack),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Staged variants loaded: $count',
-                style: const TextStyle(
-                  fontSize: 13,
-                  color: AppColors.textMuted,
-                  fontWeight: FontWeight.w600,
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Previewing staged script audio from /changes directories.',
+                  style: TextStyle(fontSize: 14, color: colorScheme.onSurface),
                 ),
-              ),
-            ],
+                const SizedBox(height: 8),
+                Text(
+                  'Staged variants loaded: $count',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: semantic.muted,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(),
-              child: const Text('Keep Active', style: TextStyle(color: AppColors.textMuted)),
+              child: Text('Keep Active', style: TextStyle(color: semantic.muted)),
             ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFD32F2F),
-                foregroundColor: AppColors.white,
+            FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: colorScheme.error,
+                foregroundColor: colorScheme.onError,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -435,6 +447,11 @@ class _ConfigurationScreenState extends State<ConfigurationScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final semantic = AppSemanticColors.of(context);
+    final isLight = theme.brightness == Brightness.light;
+
     final isGuided = widget.selectedType != 'Silent';
     final formattedTime =
         '${widget.clockHour.toString().padLeft(2, '0')}:${widget.clockMinute.toString().padLeft(2, '0')}';
@@ -466,7 +483,7 @@ class _ConfigurationScreenState extends State<ConfigurationScreen> {
     final buttonVerticalSpacing = isCompactScreen ? 18.0 : 28.0;
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: colorScheme.surface,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: EdgeInsets.symmetric(
@@ -481,11 +498,11 @@ class _ConfigurationScreenState extends State<ConfigurationScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  Flexible(
+                  Expanded(
                     child: GestureDetector(
                       onTap: _handleTitleTap,
                       behavior: HitTestBehavior.opaque,
-                      child: const Column(
+                      child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
@@ -493,81 +510,82 @@ class _ConfigurationScreenState extends State<ConfigurationScreen> {
                             style: TextStyle(
                               fontSize: 32,
                               fontWeight: FontWeight.bold,
-                              color: AppColors.textBlack,
+                              color: colorScheme.onSurface,
                               letterSpacing: -0.5,
                             ),
                           ),
-                          SizedBox(height: 4),
+                          const SizedBox(height: 4),
                           Text(
                             'Adaptive Guided Meditation',
                             style: TextStyle(
                               fontSize: 14,
-                              color: AppColors.textMuted,
+                              color: semantic.muted,
                             ),
                           ),
                         ],
                       ),
                     ),
                   ),
-                  if (widget.isDeveloperMode) ...[
-                    const SizedBox(width: 8),
-                    GestureDetector(
-                      onTap: _showActiveDeveloperModeDialog,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFFFEBEE),
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: const Color(0xFFE53935), width: 1.2),
-                          boxShadow: const [
-                            BoxShadow(
-                              color: Color(0x1AE53935),
-                              blurRadius: 4,
-                              offset: Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: const Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.circle, size: 8, color: Color(0xFFD32F2F)),
-                            SizedBox(width: 6),
-                            Text(
-                              'Developer Mode',
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFFD32F2F),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                  ],
+                  const SizedBox(width: 12),
                   Container(
                     width: 44,
                     height: 44,
                     decoration: BoxDecoration(
-                      color: AppColors.white,
+                      color: colorScheme.surfaceContainerLow,
                       shape: BoxShape.circle,
-                      boxShadow: const [
-                        BoxShadow(
-                          color: AppColors.cardShadow,
-                          blurRadius: 8,
-                          offset: Offset(0, 2),
-                        )
-                      ],
+                      border: Border.all(color: colorScheme.outlineVariant),
+                      boxShadow: isLight
+                          ? const [
+                              BoxShadow(
+                                color: AppColors.cardShadow,
+                                blurRadius: 8,
+                                offset: Offset(0, 2),
+                              )
+                            ]
+                          : null,
                     ),
                     child: IconButton(
-                      icon: const Icon(Icons.settings,
-                          color: AppColors.textBlack, size: 22),
+                      tooltip: 'Settings',
+                      icon: Icon(
+                        Icons.settings,
+                        color: colorScheme.onSurface,
+                        size: 22,
+                      ),
                       onPressed: widget.onOpenSettings,
                     ),
                   ),
                 ],
               ),
+
+              if (widget.isDeveloperMode) ...[
+                const SizedBox(height: 8),
+                GestureDetector(
+                  onTap: _showActiveDeveloperModeDialog,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: semantic.warning.withValues(alpha: 0.14),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: semantic.warning, width: 1.2),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.circle, size: 8, color: semantic.warning),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Developer Mode',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: colorScheme.onSurface,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
 
               SizedBox(height: heroVerticalSpacing),
 
@@ -582,9 +600,9 @@ class _ConfigurationScreenState extends State<ConfigurationScreen> {
                       height: heroDialOuterSize,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: AppColors.circleOuterGlow.withValues(alpha: 0.5),
+                        color: semantic.circleOuterGlow.withValues(alpha: 0.55),
                         border: Border.all(
-                          color: AppColors.circleBorder,
+                          color: semantic.circleBorder,
                           width: isCompactScreen ? 10 : 12,
                         ),
                       ),
@@ -592,88 +610,91 @@ class _ConfigurationScreenState extends State<ConfigurationScreen> {
                         child: Container(
                           width: heroDialInnerSize,
                           height: heroDialInnerSize,
-                          decoration: const BoxDecoration(
+                          decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: AppColors.white,
-                            boxShadow: [
-                              BoxShadow(
-                                color: AppColors.cardShadow,
-                                blurRadius: 16,
-                                offset: Offset(0, 4),
-                              )
-                            ],
+                            color: colorScheme.surfaceContainerLow,
+                            boxShadow: isLight
+                                ? const [
+                                    BoxShadow(
+                                      color: AppColors.cardShadow,
+                                      blurRadius: 16,
+                                      offset: Offset(0, 4),
+                                    )
+                                  ]
+                                : null,
                           ),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const Text(
-                                'Practice Ends At',
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppColors.textMuted,
-                                ),
-                              ),
-                              SizedBox(height: isCompactScreen ? 4 : 8),
-                              FittedBox(
-                                fit: BoxFit.scaleDown,
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  crossAxisAlignment: CrossAxisAlignment.baseline,
-                                  textBaseline: TextBaseline.alphabetic,
-                                  children: [
-                                    Text(
-                                      formattedTime,
-                                      style: TextStyle(
-                                        fontSize: isCompactScreen ? 40 : 48,
-                                        fontWeight: FontWeight.bold,
-                                        color: AppColors.textBlack,
-                                        letterSpacing: -1,
-                                      ),
+                          child: Padding(
+                            padding: const EdgeInsets.all(14),
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Text(
+                                    'Practice Ends At',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w500,
+                                      color: semantic.muted,
                                     ),
-                                    const SizedBox(width: 6),
-                                    Text(
-                                      amPmText,
-                                      style: TextStyle(
-                                        fontSize: isCompactScreen ? 18 : 20,
-                                        fontWeight: FontWeight.bold,
-                                        color: AppColors.textBlack,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-
-                              const SizedBox(height: 4),
-                              Text(
-                                '$currentDurationMinutes min practice',
-                                style: const TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppColors.darkOlive,
-                                ),
-                              ),
-
-                              SizedBox(height: isCompactScreen ? 6 : 8),
-                              Container(
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: isCompactScreen ? 14 : 18,
-                                  vertical: isCompactScreen ? 4 : 6,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: AppColors.backgroundSand,
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
-                                child: const Text(
-                                  'Tap to Adjust',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                    color: AppColors.textSubtle,
                                   ),
-                                ),
+                                  SizedBox(height: isCompactScreen ? 4 : 8),
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    crossAxisAlignment: CrossAxisAlignment.baseline,
+                                    textBaseline: TextBaseline.alphabetic,
+                                    children: [
+                                      Text(
+                                        formattedTime,
+                                        style: TextStyle(
+                                          fontSize: isCompactScreen ? 40 : 48,
+                                          fontWeight: FontWeight.bold,
+                                          color: colorScheme.onSurface,
+                                          letterSpacing: -1,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        amPmText,
+                                        style: TextStyle(
+                                          fontSize: isCompactScreen ? 18 : 20,
+                                          fontWeight: FontWeight.bold,
+                                          color: colorScheme.onSurface,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    '$currentDurationMinutes min practice',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w500,
+                                      color: colorScheme.primary,
+                                    ),
+                                  ),
+                                  SizedBox(height: isCompactScreen ? 6 : 8),
+                                  Container(
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: isCompactScreen ? 14 : 18,
+                                      vertical: isCompactScreen ? 4 : 6,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: semantic.sandSurface,
+                                      borderRadius: BorderRadius.circular(20),
+                                    ),
+                                    child: Text(
+                                      'Tap to Adjust',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w500,
+                                        color: semantic.subtle,
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
-                            ],
+                            ),
                           ),
                         ),
                       ),
@@ -685,68 +706,72 @@ class _ConfigurationScreenState extends State<ConfigurationScreen> {
               SizedBox(height: heroVerticalSpacing),
 
               // Guided vs Silent Toggle Pill
-              Container(
-                height: 56,
-                padding: const EdgeInsets.all(4),
-                decoration: BoxDecoration(
-                  color: AppColors.pillUnselected,
-                  borderRadius: BorderRadius.circular(28),
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: () {
-                          if (!isGuided) {
-                            widget.onSelectedTypeChanged('Guided');
-                          }
-                        },
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: isGuided
-                                ? AppColors.darkOlive
-                                : Colors.transparent,
-                            borderRadius: BorderRadius.circular(24),
-                          ),
-                          alignment: Alignment.center,
-                          child: Text(
-                            'Guided',
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
+              ConstrainedBox(
+                constraints: const BoxConstraints(minHeight: 52),
+                child: Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: semantic.pillUnselected,
+                    borderRadius: BorderRadius.circular(28),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () {
+                            if (!isGuided) {
+                              widget.onSelectedTypeChanged('Guided');
+                            }
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                            decoration: BoxDecoration(
                               color: isGuided
-                                  ? AppColors.buttonTextLight
-                                  : AppColors.textBlack,
+                                  ? colorScheme.primary
+                                  : Colors.transparent,
+                              borderRadius: BorderRadius.circular(24),
+                            ),
+                            alignment: Alignment.center,
+                            child: Text(
+                              'Guided',
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w500,
+                                color: isGuided
+                                    ? colorScheme.onPrimary
+                                    : colorScheme.onSurface,
+                              ),
                             ),
                           ),
                         ),
                       ),
-                    ),
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: () => widget.onSelectedTypeChanged('Silent'),
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: !isGuided
-                                ? AppColors.darkOlive
-                                : Colors.transparent,
-                            borderRadius: BorderRadius.circular(24),
-                          ),
-                          alignment: Alignment.center,
-                          child: Text(
-                            'Silent',
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () => widget.onSelectedTypeChanged('Silent'),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                            decoration: BoxDecoration(
                               color: !isGuided
-                                  ? AppColors.buttonTextLight
-                                  : AppColors.textBlack,
+                                  ? colorScheme.primary
+                                  : Colors.transparent,
+                              borderRadius: BorderRadius.circular(24),
+                            ),
+                            alignment: Alignment.center,
+                            child: Text(
+                              'Silent',
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w500,
+                                color: !isGuided
+                                    ? colorScheme.onPrimary
+                                    : colorScheme.onSurface,
+                              ),
                             ),
                           ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
 
@@ -806,6 +831,7 @@ class _ConfigurationScreenState extends State<ConfigurationScreen> {
 
               // Bell Card
               _buildStepperPill(
+                context: context,
                 icon: Icons.notifications,
                 title: currentBell.title,
                 onPrevious: () {
@@ -831,17 +857,14 @@ class _ConfigurationScreenState extends State<ConfigurationScreen> {
               SizedBox(height: buttonVerticalSpacing),
 
               // Begin Practice Button
-              SizedBox(
-                width: double.infinity,
-                height: 58,
-                child: ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.darkOlive,
-                    foregroundColor: AppColors.buttonTextLight,
+              ConstrainedBox(
+                constraints: const BoxConstraints(minWidth: double.infinity, minHeight: 54),
+                child: FilledButton.icon(
+                  style: FilledButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(29),
                     ),
-                    elevation: 2,
                   ),
                   onPressed: () {
                     final targetSeconds = _calculateTargetSeconds();
@@ -857,13 +880,13 @@ class _ConfigurationScreenState extends State<ConfigurationScreen> {
                     'Begin Practice',
                     style: TextStyle(
                       fontSize: 16,
-                      fontWeight: FontWeight.bold,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                 ),
               ),
 
-              // Bottom padding ensures the button is fully visible 
+              // Bottom padding ensures the button is fully visible
               // and has breathing room above system bars / safe area.
               SizedBox(height: isCompactScreen ? 20 : 32),
             ],
@@ -874,72 +897,79 @@ class _ConfigurationScreenState extends State<ConfigurationScreen> {
   }
 
   Widget _buildStepperPill({
+    required BuildContext context,
     required IconData icon,
     required String title,
     required VoidCallback onPrevious,
     required VoidCallback onNext,
   }) {
-    return Container(
-      height: 58,
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      decoration: BoxDecoration(
-        color: AppColors.white,
-        borderRadius: BorderRadius.circular(29),
-        border:
-            Border.all(color: AppColors.cardBorder.withValues(alpha: 0.5)),
-        boxShadow: const [
-          BoxShadow(
-            color: AppColors.cardShadow,
-            blurRadius: 10,
-            offset: Offset(0, 3),
-          )
-        ],
-      ),
-      child: Row(
-        children: [
-          // Circular Icon (inert display)
-          Container(
-            width: 42,
-            height: 42,
-            decoration: const BoxDecoration(
-              color: AppColors.backgroundSand,
-              shape: BoxShape.circle,
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final semantic = AppSemanticColors.of(context);
+    final isLight = theme.brightness == Brightness.light;
+
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minHeight: 56),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: colorScheme.surfaceContainerLow,
+          borderRadius: BorderRadius.circular(29),
+          border: Border.all(color: colorScheme.outlineVariant),
+          boxShadow: isLight
+              ? const [
+                  BoxShadow(
+                    color: AppColors.cardShadow,
+                    blurRadius: 10,
+                    offset: Offset(0, 3),
+                  )
+                ]
+              : null,
+        ),
+        child: Row(
+          children: [
+            // Circular Icon (inert display)
+            Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                color: semantic.sandSurface,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, color: colorScheme.onSurface, size: 22),
             ),
-            child: Icon(icon, color: AppColors.textBlack, size: 22),
-          ),
-          IconButton(
-            icon: const Icon(Icons.chevron_left, color: AppColors.textBlack),
-            onPressed: onPrevious,
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(minWidth: 36, minHeight: 44),
-            splashRadius: 22,
-          ),
-          Expanded(
-            child: Padding(
-              padding:
-                  const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
-              child: Text(
-                title,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textBlack,
+            IconButton(
+              icon: Icon(Icons.chevron_left, color: colorScheme.onSurface),
+              onPressed: onPrevious,
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 36, minHeight: 44),
+              splashRadius: 22,
+            ),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
+                child: Text(
+                  title,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                    color: colorScheme.onSurface,
+                  ),
                 ),
               ),
             ),
-          ),
-          IconButton(
-            icon:
-                const Icon(Icons.chevron_right, color: AppColors.textBlack),
-            onPressed: onNext,
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(minWidth: 36, minHeight: 44),
-            splashRadius: 22,
-          ),
-        ],
+            IconButton(
+              icon: Icon(Icons.chevron_right, color: colorScheme.onSurface),
+              onPressed: onNext,
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 36, minHeight: 44),
+              splashRadius: 22,
+            ),
+          ],
+        ),
       ),
     );
   }

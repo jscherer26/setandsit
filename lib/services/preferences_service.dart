@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'package:flutter/foundation.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../data/bell_data.dart';
 import '../models/audio_models.dart';
@@ -10,8 +10,75 @@ class PreferencesService {
   static const String _keyPractices = 'set_and_sit_practices';
   static const String _keyVoices = 'set_and_sit_voices';
   static const String _keyDeveloperMode = 'pref_developer_mode';
+  static const String _keyThemeMode = 'pref_theme_mode';
+  static const String _keyFontSizePx = 'pref_font_size_px';
+
+  static const List<int> allowedFontSizes = [14, 16, 18, 20, 22, 24];
+  static const int defaultFontSizePx = 18;
 
   static SharedPreferences? _prefs;
+
+  /// Normalizes a requested font size to the nearest 2px stop in [14..24].
+  static int normalizeFontSizePx(int? value) {
+    if (value == null) return defaultFontSizePx;
+    final clamped = value.clamp(allowedFontSizes.first, allowedFontSizes.last);
+    return ((clamped - allowedFontSizes.first) / 2).round() * 2 +
+        allowedFontSizes.first;
+  }
+
+  /// Loads the persisted [ThemeMode], defaulting to [ThemeMode.system].
+  static Future<ThemeMode> loadThemeMode() async {
+    try {
+      final prefs = await getPrefs();
+      final raw = prefs.getString(_keyThemeMode);
+      switch (raw) {
+        case 'light':
+          return ThemeMode.light;
+        case 'dark':
+          return ThemeMode.dark;
+        case 'system':
+        default:
+          return ThemeMode.system;
+      }
+    } catch (_) {
+      return ThemeMode.system;
+    }
+  }
+
+  /// Persists the selected [ThemeMode].
+  static Future<void> saveThemeMode(ThemeMode mode) async {
+    try {
+      final prefs = await getPrefs();
+      final value = switch (mode) {
+        ThemeMode.light => 'light',
+        ThemeMode.dark => 'dark',
+        ThemeMode.system => 'system',
+      };
+      await prefs.setString(_keyThemeMode, value);
+    } catch (e) {
+      debugPrint('[PreferencesService] Error saving theme mode: $e');
+    }
+  }
+
+  /// Loads the persisted display font size in px (14–24 in 2px stops, default 18).
+  static Future<int> loadFontSizePx() async {
+    try {
+      final prefs = await getPrefs();
+      return normalizeFontSizePx(prefs.getInt(_keyFontSizePx));
+    } catch (_) {
+      return defaultFontSizePx;
+    }
+  }
+
+  /// Persists the selected display font size in px (normalized to 14–24, 2px stops).
+  static Future<void> saveFontSizePx(int fontSizePx) async {
+    try {
+      final prefs = await getPrefs();
+      await prefs.setInt(_keyFontSizePx, normalizeFontSizePx(fontSizePx));
+    } catch (e) {
+      debugPrint('[PreferencesService] Error saving font size: $e');
+    }
+  }
 
   /// Returns whether Developer Mode is enabled.
   static Future<bool> isDeveloperMode() async {

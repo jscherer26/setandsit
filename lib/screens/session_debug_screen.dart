@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import '../models/audio_models.dart';
 import '../theme/app_theme.dart';
 
@@ -30,6 +30,9 @@ class SessionDebugScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final semantic = AppSemanticColors.of(context);
+
     var totalAudio = 0.0;
     var totalSilence = 0;
     final startTimes = <int>[];
@@ -47,118 +50,129 @@ class SessionDebugScreen extends StatelessWidget {
     }
 
     return Scaffold(
-      backgroundColor: AppColors.darkBackground,
+      backgroundColor: colorScheme.surface,
+      appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            if (Navigator.canPop(context)) {
+              Navigator.pop(context);
+            } else {
+              onBack();
+            }
+          },
+        ),
+        title: const Text('Session Debugger'),
+      ),
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Top Bar
-              Row(
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.arrow_back, color: Color(0xFFEAEAEA)),
-                    onPressed: () {
-                      if (Navigator.canPop(context)) {
-                        Navigator.pop(context);
-                      } else {
-                        onBack();
-                      }
-                    },
-                  ),
-                  const SizedBox(width: 8),
-                  const Text(
-                    'Session Debugger',
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFFEAEAEA),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-
-              // Configuration Summary Card
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: AppColors.cardSurface,
-                  borderRadius: BorderRadius.circular(16),
-                ),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          child: CustomScrollView(
+            slivers: [
+              SliverToBoxAdapter(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Configuration Parameters',
+                    // Configuration Summary Card
+                    Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Configuration Parameters',
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w500,
+                                color: colorScheme.primary,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            _debugRow(context, 'Practice Type', selectedType),
+                            _debugRow(
+                              context,
+                              'Target Duration',
+                              '${targetSeconds ~/ 60}m (${targetSeconds}s)',
+                            ),
+                            _debugRow(
+                              context,
+                              'Settings',
+                              'Instructions: ${instructionDensity.toInt()}, Mind-Wandering: ${redirectionDensity.toInt()}',
+                            ),
+                            _debugRow(context, 'Selected Bell', selectedBell.title),
+                            _debugRow(
+                              context,
+                              'Total Items in Queue',
+                              '${sessionQueue.length} items',
+                            ),
+                            _debugRow(
+                              context,
+                              'Total Audio Duration',
+                              '${totalAudio.round()}s',
+                            ),
+                            _debugRow(
+                              context,
+                              'Total Silence Pauses',
+                              '${totalSilence}s',
+                            ),
+                            _debugRow(
+                              context,
+                              'Total Queue Duration',
+                              '${_formatSeconds((totalAudio + totalSilence).round())} (${(totalAudio + totalSilence).round()}s)',
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Generated SessionItems (${sessionQueue.length})',
                       style: TextStyle(
                         fontSize: 15,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.sageActive,
+                        fontWeight: FontWeight.w500,
+                        color: colorScheme.onSurface,
                       ),
                     ),
                     const SizedBox(height: 8),
-                    _debugRow('Practice Type', selectedType),
-                    _debugRow('Target Duration', '${targetSeconds ~/ 60}m (${targetSeconds}s)'),
-                    _debugRow(
-                      'Settings',
-                      'Instructions: ${instructionDensity.toInt()}, Mind-Wandering: ${redirectionDensity.toInt()}',
-                    ),
-                    _debugRow('Selected Bell', selectedBell.title),
-                    _debugRow('Total Items in Queue', '${sessionQueue.length} items'),
-                    _debugRow('Total Audio Duration', '${totalAudio.round()}s'),
-                    _debugRow('Total Silence Pauses', '${totalSilence}s'),
-                    _debugRow(
-                      'Total Queue Duration',
-                      '${_formatSeconds((totalAudio + totalSilence).round())} (${(totalAudio + totalSilence).round()}s)',
-                    ),
                   ],
                 ),
               ),
+              SliverList.builder(
+                itemCount: sessionQueue.length,
+                itemBuilder: (context, index) {
+                  final item = sessionQueue[index];
+                  final startSec = startTimes.isNotEmpty ? startTimes[index] : 0;
+                  final totalQueueSec = (totalAudio + totalSilence).round();
+                  final countdownBase = targetSeconds > 0 ? targetSeconds : totalQueueSec;
+                  final remainingSec = (countdownBase - startSec).clamp(0, countdownBase);
 
-              const SizedBox(height: 16),
-              Text(
-                'Generated SessionItems (${sessionQueue.length})',
-                style: const TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFFEAEAEA),
-                ),
-              ),
-              const SizedBox(height: 8),
+                  if (item is PlayAudioItem) {
+                    final isOverlap = item.bellAssetPath != null ||
+                        item.segment == ClinicalSegment.S16;
 
-              // Items List
-              Expanded(
-                child: ListView.builder(
-                  itemCount: sessionQueue.length,
-                  itemBuilder: (context, index) {
-                    final item = sessionQueue[index];
-                    final startSec = startTimes.isNotEmpty ? startTimes[index] : 0;
-                    final totalQueueSec = (totalAudio + totalSilence).round();
-                    final countdownBase = targetSeconds > 0 ? targetSeconds : totalQueueSec;
-                    final remainingSec = (countdownBase - startSec).clamp(0, countdownBase);
-
-                    if (item is PlayAudioItem) {
-                      final isOverlap = item.bellAssetPath != null ||
-                          item.segment == ClinicalSegment.S16;
-
-                      return Card(
-                        color: AppColors.cardSurface,
-                        margin: const EdgeInsets.only(bottom: 8),
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Card(
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          side: isOverlap
-                              ? const BorderSide(color: AppColors.sageActive, width: 1.5)
-                              : BorderSide.none,
+                          borderRadius: BorderRadius.circular(16),
+                          side: BorderSide(
+                            color: isOverlap
+                                ? colorScheme.primary
+                                : colorScheme.outlineVariant,
+                            width: isOverlap ? 1.5 : 1.0,
+                          ),
                         ),
                         child: Padding(
                           padding: const EdgeInsets.all(12),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              Wrap(
+                                alignment: WrapAlignment.spaceBetween,
+                                crossAxisAlignment: WrapCrossAlignment.center,
+                                spacing: 8,
+                                runSpacing: 4,
                                 children: [
                                   Text(
                                     isOverlap
@@ -166,17 +180,17 @@ class SessionDebugScreen extends StatelessWidget {
                                         : '#${index + 1} [PLAY AUDIO]  ⏱ ${_formatSeconds(remainingSec)}',
                                     style: TextStyle(
                                       fontSize: 12,
-                                      fontWeight: FontWeight.bold,
+                                      fontWeight: FontWeight.w600,
                                       color: isOverlap
-                                          ? AppColors.darkOlive
-                                          : AppColors.sageActive,
+                                          ? colorScheme.primary
+                                          : semantic.success,
                                     ),
                                   ),
                                   Text(
                                     item.phaseName,
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontSize: 12,
-                                      color: AppColors.roseActive,
+                                      color: colorScheme.tertiary,
                                     ),
                                   ),
                                 ],
@@ -184,18 +198,18 @@ class SessionDebugScreen extends StatelessWidget {
                               const SizedBox(height: 4),
                               Text(
                                 item.displayTitle,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                  color: Color(0xFFEAEAEA),
+                                  fontWeight: FontWeight.w500,
+                                  color: colorScheme.onSurface,
                                 ),
                               ),
                               const SizedBox(height: 2),
                               Text(
                                 'Phase: ${item.phaseName} | Duration: ${item.durationSeconds.round()}s',
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 11,
-                                  color: Color(0xFF9E9E9E),
+                                  color: semantic.muted,
                                 ),
                               ),
                               if (isOverlap) ...[
@@ -203,10 +217,10 @@ class SessionDebugScreen extends StatelessWidget {
                                 Container(
                                   padding: const EdgeInsets.all(8),
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFF1E2822),
+                                    color: semantic.sandSurface,
                                     borderRadius: BorderRadius.circular(8),
                                     border: Border.all(
-                                      color: AppColors.sageActive.withValues(alpha: 0.5),
+                                      color: colorScheme.primary.withValues(alpha: 0.45),
                                     ),
                                   ),
                                   child: Column(
@@ -214,16 +228,19 @@ class SessionDebugScreen extends StatelessWidget {
                                     children: [
                                       Row(
                                         children: [
-                                          const Icon(Icons.notifications_active,
-                                              size: 13, color: AppColors.sageActive),
+                                          Icon(
+                                            Icons.notifications_active,
+                                            size: 13,
+                                            color: colorScheme.primary,
+                                          ),
                                           const SizedBox(width: 4),
                                           Expanded(
                                             child: Text(
-                                              'Bell Player: ${item.bellAssetPath ?? selectedBell.filePath} (fires instantly, -2.5dB)',
-                                              style: const TextStyle(
+                                              'Bell Player: ${item.bellAssetPath ?? selectedBell.filePath} (fires instantly)',
+                                              style: TextStyle(
                                                 fontSize: 11,
-                                                fontWeight: FontWeight.bold,
-                                                color: Color(0xFFEAEAEA),
+                                                fontWeight: FontWeight.w500,
+                                                color: colorScheme.onSurface,
                                               ),
                                             ),
                                           ),
@@ -232,16 +249,19 @@ class SessionDebugScreen extends StatelessWidget {
                                       const SizedBox(height: 4),
                                       Row(
                                         children: [
-                                          const Icon(Icons.record_voice_over,
-                                              size: 13, color: AppColors.sageActive),
+                                          Icon(
+                                            Icons.record_voice_over,
+                                            size: 13,
+                                            color: colorScheme.primary,
+                                          ),
                                           const SizedBox(width: 4),
                                           Expanded(
                                             child: Text(
                                               'Voice Player: ${item.audioAssetPath} (speaks at +2.5s over bell decay)',
-                                              style: const TextStyle(
+                                              style: TextStyle(
                                                 fontSize: 11,
-                                                fontWeight: FontWeight.bold,
-                                                color: Color(0xFFEAEAEA),
+                                                fontWeight: FontWeight.w500,
+                                                color: colorScheme.onSurface,
                                               ),
                                             ),
                                           ),
@@ -253,53 +273,54 @@ class SessionDebugScreen extends StatelessWidget {
                               ] else ...[
                                 Text(
                                   'Path: ${item.audioAssetPath}',
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 10,
-                                    color: Color(0xFF9E9E9E),
+                                    color: semantic.muted,
                                   ),
                                 ),
                               ],
                             ],
                           ),
                         ),
-                      );
-                    } else if (item is PauseSilenceItem) {
-                      return Card(
-                        color: AppColors.cardSurface,
-                        margin: const EdgeInsets.only(bottom: 8),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
+                      ),
+                    );
+                  } else if (item is PauseSilenceItem) {
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Card(
                         child: Padding(
                           padding: const EdgeInsets.all(12),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          child: Wrap(
+                            alignment: WrapAlignment.spaceBetween,
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            spacing: 8,
+                            runSpacing: 4,
                             children: [
                               Text(
                                 '#${index + 1} [PAUSE SILENCE]  ⏱ ${_formatSeconds(remainingSec)}',
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 12,
-                                  fontWeight: FontWeight.bold,
-                                  color: AppColors.roseActive,
+                                  fontWeight: FontWeight.w600,
+                                  color: semantic.warning,
                                 ),
                               ),
                               Text(
                                 '${item.durationSeconds}s pause',
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 13,
-                                  fontWeight: FontWeight.bold,
-                                  color: Color(0xFFEAEAEA),
+                                  fontWeight: FontWeight.w500,
+                                  color: colorScheme.onSurface,
                                 ),
                               ),
                             ],
                           ),
                         ),
-                      );
-                    }
+                      ),
+                    );
+                  }
 
-                    return const SizedBox.shrink();
-                  },
-                ),
+                  return const SizedBox.shrink();
+                },
               ),
             ],
           ),
@@ -308,19 +329,32 @@ class SessionDebugScreen extends StatelessWidget {
     );
   }
 
-  static Widget _debugRow(String label, String value) {
+  static Widget _debugRow(BuildContext context, String label, String value) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final semantic = AppSemanticColors.of(context);
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2),
+      padding: const EdgeInsets.symmetric(vertical: 3),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: const TextStyle(fontSize: 12, color: Color(0xFF9E9E9E))),
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-              color: Color(0xFFEAEAEA),
+          Expanded(
+            flex: 2,
+            child: Text(
+              label,
+              style: TextStyle(fontSize: 12, color: semantic.muted),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            flex: 3,
+            child: Text(
+              value,
+              textAlign: TextAlign.end,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                color: colorScheme.onSurface,
+              ),
             ),
           ),
         ],

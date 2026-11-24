@@ -1,5 +1,5 @@
 name: setandsit
-description: "A new Flutter project."
+description: "Adaptive, trauma-sensitive guided and silent meditation timer."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
@@ -40,6 +40,7 @@ dependencies:
   wakelock_plus: ^1.8.1
   package_info_plus: ^10.2.2
   url_launcher: ^6.3.3
+  material_ui: ^1.11.1
 
 dev_dependencies:
   flutter_test:
@@ -66,8 +67,7 @@ flutter:
 
   assets:
     - assets/bells/
-    - assets/generated_mp3s/
-    - assets/icon/
+    - assets/icon/app_icon_transparent.png
     - assets/raw/session_manifest.json
     - assets/raw/audio_durations.json
     - assets/raw/staged_changes.json
