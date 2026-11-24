@@ -294,6 +294,10 @@ class PlayAudioItem extends SessionItem {
   @override
   final String text;
   final String? bellAssetPath;
+  final String? voiceId;
+  final String? variantId;
+  final bool isStagedOverride;
+  final String? bellId;
 
   PlayAudioItem({
     required this.id,
@@ -305,6 +309,10 @@ class PlayAudioItem extends SessionItem {
     this.isBell = false,
     this.text = '',
     this.bellAssetPath,
+    this.voiceId,
+    this.variantId,
+    this.isStagedOverride = false,
+    this.bellId,
   });
 }
 

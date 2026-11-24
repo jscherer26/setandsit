@@ -1,60 +1,67 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart';
+
+import '../audio/audio_sources.dart';
+import '../audio/bundled_audio_sources.dart';
 import '../models/audio_models.dart';
 
 class AudioManifestService {
-  static Map<String, List<ScriptVariant>>? _cachedScriptBank;
-  static Map<String, Map<String, Map<String, double>>>? _cachedDurations;
-  static bool _isDeveloperMode = false;
-  static Map<String, dynamic>? _cachedStagedChanges;
+  final ManifestSource _manifestSource;
+  final AudioSourceResolver _audioSourceResolver;
 
-  static bool get isDeveloperMode => _isDeveloperMode;
+  Map<String, List<ScriptVariant>>? _cachedScriptBank;
+  Map<String, Map<String, Map<String, double>>>? _cachedDurations;
+  bool _isDeveloperMode = false;
+  Map<String, dynamic>? _cachedStagedChanges;
 
-  static void setDeveloperMode(bool enabled) {
+  AudioManifestService({
+    ManifestSource? manifestSource,
+    AudioSourceResolver? audioSourceResolver,
+  })  : _manifestSource = manifestSource ?? const BundledManifestSource(),
+        _audioSourceResolver =
+            audioSourceResolver ?? const BundledAudioSourceResolver();
+
+  bool get isDeveloperMode => _isDeveloperMode;
+
+  Future<void> setDeveloperMode(bool enabled) async {
     _isDeveloperMode = enabled;
     if (enabled && _cachedStagedChanges == null) {
-      loadStagedChanges();
+      await loadStagedChanges();
     }
   }
 
-  static int get stagedVariantsCount {
+  int get stagedVariantsCount {
     if (_cachedStagedChanges == null) return 0;
     final variants = _cachedStagedChanges!['variants'];
     if (variants is Map) return variants.length;
     return 0;
   }
 
-  static Map<String, dynamic>? get stagedChanges => _cachedStagedChanges;
+  Map<String, dynamic>? get stagedChanges => _cachedStagedChanges;
 
   @visibleForTesting
-  static void setMockStagedChanges(Map<String, dynamic>? data) {
+  void setMockStagedChanges(Map<String, dynamic>? data) {
     _cachedStagedChanges = data;
   }
 
-  /// Loads staged changes from changes_manifest.json or staged_changes.json
-  static Future<void> loadStagedChanges() async {
+  /// Loads staged changes from the injected [ManifestSource].
+  Future<void> loadStagedChanges() async {
     try {
-      String? jsonStr;
-      try {
-        jsonStr = await rootBundle.loadString('assets/audio/changes_manifest.json');
-      } catch (_) {
-        try {
-          jsonStr = await rootBundle.loadString('assets/raw/staged_changes.json');
-        } catch (_) {}
-      }
+      final jsonStr = await _manifestSource.loadStagedChangesJson();
       if (jsonStr != null && jsonStr.isNotEmpty) {
         final Map<String, dynamic> data = jsonDecode(jsonStr);
         _cachedStagedChanges = data;
-        debugPrint('[AudioManifestService] Loaded staged changes with $stagedVariantsCount variants.');
+        debugPrint(
+          '[AudioManifestService] Loaded staged changes with $stagedVariantsCount variants.',
+        );
       }
     } catch (e) {
       debugPrint('[AudioManifestService] Error loading staged changes: $e');
     }
   }
 
-  /// Loads session_manifest.json, audio_durations.json, and staged changes
-  static Future<void> initialize({bool? developerMode}) async {
+  /// Loads session manifest, audio durations, and staged changes from [ManifestSource].
+  Future<void> initialize({bool? developerMode}) async {
     if (developerMode != null) {
       _isDeveloperMode = developerMode;
     }
@@ -67,12 +74,12 @@ class AudioManifestService {
     }
 
     try {
-      final manifestJson = await rootBundle.loadString('assets/raw/session_manifest.json');
+      final manifestJson = await _manifestSource.loadSessionManifestJson();
       final Map<String, dynamic> manifestMap = jsonDecode(manifestJson);
       final manifest = SessionManifest.fromJson(manifestMap);
       _cachedScriptBank = manifest.scriptBank;
 
-      final durationsJson = await rootBundle.loadString('assets/raw/audio_durations.json');
+      final durationsJson = await _manifestSource.loadAudioDurationsJson();
       final Map<String, dynamic> durMap = jsonDecode(durationsJson);
 
       final parsedDurations = <String, Map<String, Map<String, double>>>{};
@@ -84,7 +91,8 @@ class AudioManifestService {
             parsedDurations[vNorm]![segCode] = {};
             if (varsRaw is Map<String, dynamic>) {
               varsRaw.forEach((varCode, secVal) {
-                parsedDurations[vNorm]![segCode]![varCode] = (secVal as num).toDouble();
+                parsedDurations[vNorm]![segCode]![varCode] =
+                    (secVal as num).toDouble();
               });
             }
           });
@@ -102,9 +110,9 @@ class AudioManifestService {
     }
   }
 
-  /// Returns script variants for a segment code (e.g. 'S01')
+  /// Returns script variants for a segment code (e.g. 'S01').
   /// When Developer Mode is on, staged text overrides are applied.
-  static List<ScriptVariant> getVariantsForSegment(String segmentCode) {
+  List<ScriptVariant> getVariantsForSegment(String segmentCode) {
     final list = _cachedScriptBank?[segmentCode] ?? [];
     if (!_isDeveloperMode || _cachedStagedChanges == null) {
       return list;
@@ -131,8 +139,8 @@ class AudioManifestService {
     }).toList();
   }
 
-  /// Checks if a staged replacement exists for this variant
-  static bool hasStagedAudio({
+  /// Checks if a staged replacement exists for this variant.
+  bool hasStagedAudio({
     required String voice,
     required String segmentCode,
     required String variantId,
@@ -153,7 +161,7 @@ class AudioManifestService {
 
   /// Returns the exact audio duration for a voice, segment code, and variant.
   /// When in Developer Mode, staged durations take precedence.
-  static double getAudioDuration({
+  double getAudioDuration({
     required String voice,
     required String segmentCode,
     required String variantId,
@@ -180,17 +188,37 @@ class AudioManifestService {
     return segmentCode == 'S16' ? 4.5 : 10.0;
   }
 
-  /// Resolves the full Flutter asset path for a voice persona file.
-  /// When Developer Mode is on, checks for staged replacement in changes/.
-  static String getAudioAssetPath({
+  /// Resolves the playback [ResolvedAudio] for a voice clip, applying staged
+  /// Developer Mode overrides when active.
+  ResolvedAudio resolveVoiceAudio({
     required String voice,
     required String segmentCode,
     required String variantId,
   }) {
-    final vNorm = voice.toLowerCase();
-    if (_isDeveloperMode && hasStagedAudio(voice: voice, segmentCode: segmentCode, variantId: variantId)) {
-      return 'assets/audio/$vNorm/changes/${segmentCode}_$variantId.mp3';
-    }
-    return 'assets/audio/$vNorm/${segmentCode}_$variantId.mp3';
+    final useStaged = _isDeveloperMode &&
+        hasStagedAudio(
+          voice: voice,
+          segmentCode: segmentCode,
+          variantId: variantId,
+        );
+    return _audioSourceResolver.resolveVoiceClip(
+      voiceId: voice,
+      segmentCode: segmentCode,
+      variantId: variantId,
+      useStagedOverride: useStaged,
+    );
+  }
+
+  /// Resolves the debug path/URI label for a voice persona clip.
+  String getAudioAssetPath({
+    required String voice,
+    required String segmentCode,
+    required String variantId,
+  }) {
+    return resolveVoiceAudio(
+      voice: voice,
+      segmentCode: segmentCode,
+      variantId: variantId,
+    ).debugLabel;
   }
 }

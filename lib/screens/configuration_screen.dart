@@ -3,7 +3,6 @@ import 'package:material_ui/material_ui.dart';
 import '../models/audio_models.dart';
 import '../models/practice_config.dart';
 import '../models/voice_config.dart';
-import '../services/audio_manifest_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/practice_stepper_card.dart';
 import '../widgets/voice_stepper_card.dart';
@@ -42,6 +41,9 @@ class ConfigurationScreen extends StatefulWidget {
   final Function(int hour, int minute, bool isAm) onClockTimeChanged;
 
   final bool isDeveloperMode;
+  final int stagedVariantsCount;
+  final bool allowDeveloperMode;
+  final VoidCallback? onExit;
   final ValueChanged<bool>? onDeveloperModeChanged;
 
   final Function(
@@ -77,6 +79,9 @@ class ConfigurationScreen extends StatefulWidget {
     required this.isAm,
     required this.onClockTimeChanged,
     this.isDeveloperMode = false,
+    this.stagedVariantsCount = 0,
+    this.allowDeveloperMode = true,
+    this.onExit,
     this.onDeveloperModeChanged,
     required this.onBeginPractice,
   });
@@ -102,6 +107,7 @@ class _ConfigurationScreenState extends State<ConfigurationScreen> {
   }
 
   void _handleTitleTap() {
+    if (!widget.allowDeveloperMode) return;
     final now = DateTime.now();
     if (_lastTitleTapTime == null ||
         now.difference(_lastTitleTapTime!) > const Duration(milliseconds: 1500)) {
@@ -113,7 +119,7 @@ class _ConfigurationScreenState extends State<ConfigurationScreen> {
 
     if (_titleTapCount >= 3) {
       _titleTapCount = 0;
-      _showDeveloperModeDialog();
+      unawaited(_showDeveloperModeDialog());
     }
   }
 
@@ -143,7 +149,7 @@ class _ConfigurationScreenState extends State<ConfigurationScreen> {
 
   Future<void> _showDeveloperModeDialog() async {
     if (widget.isDeveloperMode) {
-      _showActiveDeveloperModeDialog();
+      await _showActiveDeveloperModeDialog();
       return;
     }
 
@@ -252,7 +258,7 @@ class _ConfigurationScreenState extends State<ConfigurationScreen> {
   }
 
   Future<void> _showActiveDeveloperModeDialog() async {
-    final count = AudioManifestService.stagedVariantsCount;
+    final count = widget.stagedVariantsCount;
     await showDialog(
       context: context,
       builder: (dialogContext) {
@@ -498,6 +504,36 @@ class _ConfigurationScreenState extends State<ConfigurationScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
+                  if (widget.onExit != null) ...[
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: colorScheme.surfaceContainerLow,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: colorScheme.outlineVariant),
+                        boxShadow: isLight
+                            ? const [
+                                BoxShadow(
+                                  color: AppColors.cardShadow,
+                                  blurRadius: 8,
+                                  offset: Offset(0, 2),
+                                )
+                              ]
+                            : null,
+                      ),
+                      child: IconButton(
+                        tooltip: 'Back',
+                        icon: Icon(
+                          Icons.arrow_back,
+                          color: colorScheme.onSurface,
+                          size: 22,
+                        ),
+                        onPressed: widget.onExit,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                  ],
                   Expanded(
                     child: GestureDetector(
                       onTap: _handleTitleTap,

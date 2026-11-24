@@ -1,6 +1,5 @@
 import 'package:material_ui/material_ui.dart';
 import '../models/practice_config.dart';
-import '../services/preferences_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/practice_stepper_card.dart';
 
@@ -74,7 +73,6 @@ class _ManagePracticesScreenState extends State<ManagePracticesScreen> {
   }
 
   void _saveAndNotify() {
-    PreferencesService.savePractices(_practices);
     widget.onPracticesUpdated(_practices);
   }
 

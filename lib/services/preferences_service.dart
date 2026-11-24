@@ -1,10 +1,12 @@
 import 'dart:convert';
 import 'package:material_ui/material_ui.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+
 import '../data/bell_data.dart';
 import '../models/audio_models.dart';
+import '../models/display_preferences.dart';
 import '../models/practice_config.dart';
 import '../models/voice_config.dart';
+import '../storage/key_value_store.dart';
 
 class PreferencesService {
   static const String _keyPractices = 'set_and_sit_practices';
@@ -13,24 +15,21 @@ class PreferencesService {
   static const String _keyThemeMode = 'pref_theme_mode';
   static const String _keyFontSizePx = 'pref_font_size_px';
 
-  static const List<int> allowedFontSizes = [14, 16, 18, 20, 22, 24];
-  static const int defaultFontSizePx = 18;
+  static const List<int> allowedFontSizes = DisplayPreferences.allowedFontSizes;
+  static const int defaultFontSizePx = DisplayPreferences.defaultFontSizePx;
 
-  static SharedPreferences? _prefs;
+  final KeyValueStore _store;
+
+  const PreferencesService(this._store);
 
   /// Normalizes a requested font size to the nearest 2px stop in [14..24].
-  static int normalizeFontSizePx(int? value) {
-    if (value == null) return defaultFontSizePx;
-    final clamped = value.clamp(allowedFontSizes.first, allowedFontSizes.last);
-    return ((clamped - allowedFontSizes.first) / 2).round() * 2 +
-        allowedFontSizes.first;
-  }
+  static int normalizeFontSizePx(int? value) =>
+      DisplayPreferences.normalizeFontSizePx(value);
 
   /// Loads the persisted [ThemeMode], defaulting to [ThemeMode.system].
-  static Future<ThemeMode> loadThemeMode() async {
+  Future<ThemeMode> loadThemeMode() async {
     try {
-      final prefs = await getPrefs();
-      final raw = prefs.getString(_keyThemeMode);
+      final raw = _store.getString(_keyThemeMode);
       switch (raw) {
         case 'light':
           return ThemeMode.light;
@@ -46,84 +45,60 @@ class PreferencesService {
   }
 
   /// Persists the selected [ThemeMode].
-  static Future<void> saveThemeMode(ThemeMode mode) async {
+  Future<void> saveThemeMode(ThemeMode mode) async {
     try {
-      final prefs = await getPrefs();
       final value = switch (mode) {
         ThemeMode.light => 'light',
         ThemeMode.dark => 'dark',
         ThemeMode.system => 'system',
       };
-      await prefs.setString(_keyThemeMode, value);
+      await _store.setString(_keyThemeMode, value);
     } catch (e) {
       debugPrint('[PreferencesService] Error saving theme mode: $e');
     }
   }
 
   /// Loads the persisted display font size in px (14–24 in 2px stops, default 18).
-  static Future<int> loadFontSizePx() async {
+  Future<int> loadFontSizePx() async {
     try {
-      final prefs = await getPrefs();
-      return normalizeFontSizePx(prefs.getInt(_keyFontSizePx));
+      return normalizeFontSizePx(_store.getInt(_keyFontSizePx));
     } catch (_) {
       return defaultFontSizePx;
     }
   }
 
   /// Persists the selected display font size in px (normalized to 14–24, 2px stops).
-  static Future<void> saveFontSizePx(int fontSizePx) async {
+  Future<void> saveFontSizePx(int fontSizePx) async {
     try {
-      final prefs = await getPrefs();
-      await prefs.setInt(_keyFontSizePx, normalizeFontSizePx(fontSizePx));
+      await _store.setInt(_keyFontSizePx, normalizeFontSizePx(fontSizePx));
     } catch (e) {
       debugPrint('[PreferencesService] Error saving font size: $e');
     }
   }
 
   /// Returns whether Developer Mode is enabled.
-  static Future<bool> isDeveloperMode() async {
-    final prefs = await getPrefs();
-    return prefs.getBool(_keyDeveloperMode) ?? false;
+  Future<bool> isDeveloperMode() async {
+    return _store.getBool(_keyDeveloperMode) ?? false;
   }
 
   /// Sets Developer Mode state.
-  static Future<void> setDeveloperMode(bool enabled) async {
-    final prefs = await getPrefs();
-    await prefs.setBool(_keyDeveloperMode, enabled);
+  Future<void> setDeveloperMode(bool enabled) async {
+    await _store.setBool(_keyDeveloperMode, enabled);
   }
 
   /// Ensures Developer Mode always starts as false on fresh application launch.
-  static Future<void> resetDeveloperModeOnStartup() async {
+  Future<void> resetDeveloperModeOnStartup() async {
     try {
-      final prefs = await getPrefs();
-      await prefs.setBool(_keyDeveloperMode, false);
+      await _store.setBool(_keyDeveloperMode, false);
     } catch (_) {}
-  }
-
-  /// Visible for testing to reset cached instance when mock values change
-  @visibleForTesting
-  static void resetCache() {
-    _prefs = null;
-  }
-
-  /// Pre-warms or gets cached SharedPreferences instance
-  static Future<SharedPreferences> getPrefs() async {
-    _prefs ??= await SharedPreferences.getInstance();
-    return _prefs!;
-  }
-
-  /// Explicit initialization helper
-  static Future<void> init() async {
-    await getPrefs();
   }
 
   /// Loads voices from local storage, returning defaults if not found.
   /// Automatically purges any retired voices (e.g. legacy 'kia') and migrates storage.
-  static Future<List<VoiceConfig>> loadVoices() async {
-    final prefs = await getPrefs();
-    final raw = prefs.getString(_keyVoices);
+  Future<List<VoiceConfig>> loadVoices() async {
+    final raw = _store.getString(_keyVoices);
     if (raw == null) {
-      return VoiceConfig.defaultVoices;
+      return List<VoiceConfig>.from(VoiceConfig.defaultVoices);
     }
     try {
       final list = jsonDecode(raw) as List<dynamic>;
@@ -142,25 +117,25 @@ class PreferencesService {
         await saveVoices(voices);
       }
 
-      return voices.isNotEmpty ? voices : VoiceConfig.defaultVoices;
+      return voices.isNotEmpty
+          ? voices
+          : List<VoiceConfig>.from(VoiceConfig.defaultVoices);
     } catch (_) {
-      return VoiceConfig.defaultVoices;
+      return List<VoiceConfig>.from(VoiceConfig.defaultVoices);
     }
   }
 
   /// Saves the list of voices to local storage.
-  static Future<void> saveVoices(List<VoiceConfig> voices) async {
-    final prefs = await getPrefs();
+  Future<void> saveVoices(List<VoiceConfig> voices) async {
     final jsonList = voices.map((v) => v.toJson()).toList();
-    await prefs.setString(_keyVoices, jsonEncode(jsonList));
+    await _store.setString(_keyVoices, jsonEncode(jsonList));
   }
 
   /// Loads practices from local storage, returning defaults if not found.
-  static Future<List<PracticeConfig>> loadPractices() async {
-    final prefs = await getPrefs();
-    final raw = prefs.getString(_keyPractices);
+  Future<List<PracticeConfig>> loadPractices() async {
+    final raw = _store.getString(_keyPractices);
     if (raw == null) {
-      return PracticeConfig.defaultPractices;
+      return List<PracticeConfig>.from(PracticeConfig.defaultPractices);
     }
     try {
       final list = jsonDecode(raw) as List<dynamic>;
@@ -168,20 +143,25 @@ class PreferencesService {
           .map((e) => PracticeConfig.fromJson(e as Map<String, dynamic>))
           .toList();
       if (practices.isEmpty) {
-        return PracticeConfig.defaultPractices;
+        return List<PracticeConfig>.from(PracticeConfig.defaultPractices);
       }
 
       // Sync system practices with updated system defaults (e.g. renamed "Trauma-Sensitive Grounding")
       var changed = false;
       practices = practices.map((p) {
         if (p.isSystem) {
-          final sysDefault = PracticeConfig.defaultPractices.cast<PracticeConfig?>().firstWhere(
+          final sysDefault =
+              PracticeConfig.defaultPractices.cast<PracticeConfig?>().firstWhere(
             (def) => def?.id == p.id,
             orElse: () => null,
           );
-          if (sysDefault != null && (sysDefault.name != p.name || sysDefault.subtitle != p.subtitle)) {
+          if (sysDefault != null &&
+              (sysDefault.name != p.name || sysDefault.subtitle != p.subtitle)) {
             changed = true;
-            return p.copyWith(name: sysDefault.name, subtitle: sysDefault.subtitle);
+            return p.copyWith(
+              name: sysDefault.name,
+              subtitle: sysDefault.subtitle,
+            );
           }
         }
         return p;
@@ -193,74 +173,92 @@ class PreferencesService {
 
       return practices;
     } catch (_) {
-      return PracticeConfig.defaultPractices;
+      return List<PracticeConfig>.from(PracticeConfig.defaultPractices);
     }
   }
 
   /// Saves the list of practices to local storage.
-  static Future<void> savePractices(List<PracticeConfig> practices) async {
-    final prefs = await getPrefs();
+  Future<void> savePractices(List<PracticeConfig> practices) async {
     final jsonList = practices.map((p) => p.toJson()).toList();
-    await prefs.setString(_keyPractices, jsonEncode(jsonList));
+    await _store.setString(_keyPractices, jsonEncode(jsonList));
   }
 
-  static Future<void> saveState(SavedState state) async {
+  Future<void> saveState(SavedState state) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setInt('pref_duration', state.practiceDurationMinutes);
-      await prefs.setDouble('pref_instruction_density', state.instructionDensity);
-      await prefs.setDouble('pref_redirection_density', state.redirectionDensity);
-      await prefs.setInt('pref_prep_delay', state.preparationDelaySeconds);
-      await prefs.setString('pref_practice_mode', state.practiceMode);
-      await prefs.setString('pref_selected_bell_id', state.selectedBellId);
-      await prefs.setString('pref_selected_practice_id', state.selectedPracticeId ?? 'focused_calm');
-      await prefs.setString('pref_selected_practice_name', state.selectedPractice);
-      await prefs.setString('pref_selected_voice_id', state.selectedVoiceId ?? 'grace');
-      await prefs.setInt('pref_selected_voice_idx', state.selectedVoiceIndex);
-      await prefs.setInt('pref_clock_hour', state.targetClockTimeHour);
-      await prefs.setInt('pref_clock_minute', state.targetClockTimeMinute);
-      await prefs.setBool('pref_clock_is_am', state.targetClockTimeIsAm);
+      await _store.setInt('pref_duration', state.practiceDurationMinutes);
+      await _store.setDouble(
+        'pref_instruction_density',
+        state.instructionDensity,
+      );
+      await _store.setDouble(
+        'pref_redirection_density',
+        state.redirectionDensity,
+      );
+      await _store.setInt('pref_prep_delay', state.preparationDelaySeconds);
+      await _store.setString('pref_practice_mode', state.practiceMode);
+      await _store.setString('pref_selected_bell_id', state.selectedBellId);
+      await _store.setString(
+        'pref_selected_practice_id',
+        state.selectedPracticeId ?? 'focused_calm',
+      );
+      await _store.setString(
+        'pref_selected_practice_name',
+        state.selectedPractice,
+      );
+      await _store.setString(
+        'pref_selected_voice_id',
+        state.selectedVoiceId ?? 'grace',
+      );
+      await _store.setInt('pref_selected_voice_idx', state.selectedVoiceIndex);
+      await _store.setInt('pref_clock_hour', state.targetClockTimeHour);
+      await _store.setInt('pref_clock_minute', state.targetClockTimeMinute);
+      await _store.setBool('pref_clock_is_am', state.targetClockTimeIsAm);
     } catch (e) {
       debugPrint('[PreferencesService] Error during disk save: $e');
     }
   }
 
-  static Future<SavedState> loadState() async {
+  Future<SavedState> loadState() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
       // Only fall back to the default when the value has never been set.
       // A stored value of 20 is a legitimate user choice and must be preserved.
-      var duration = prefs.getInt('pref_duration');
+      var duration = _store.getInt('pref_duration');
       if (duration == null) {
         duration = 3;
-        await prefs.setInt('pref_duration', 3);
+        await _store.setInt('pref_duration', 3);
       }
-      final instruction = prefs.getDouble('pref_instruction_density') ?? 3.0;
-      final redirection = prefs.getDouble('pref_redirection_density') ?? 3.0;
+      final instruction = _store.getDouble('pref_instruction_density') ?? 3.0;
+      final redirection = _store.getDouble('pref_redirection_density') ?? 3.0;
       // Only fall back to the default when the value has never been set.
       // A stored value of 10 is a legitimate user choice and must be preserved.
-      var delay = prefs.getInt('pref_prep_delay');
+      var delay = _store.getInt('pref_prep_delay');
       if (delay == null) {
         delay = 3;
-        await prefs.setInt('pref_prep_delay', 3);
+        await _store.setInt('pref_prep_delay', 3);
       }
-      final mode = prefs.getString('pref_practice_mode') ?? 'Guided';
-      final bellId = prefs.getString('pref_selected_bell_id') ?? 'bell_meditation';
-      final practiceId = prefs.getString('pref_selected_practice_id') ?? 'focused_calm';
-      var practiceName = prefs.getString('pref_selected_practice_name') ?? 'Focused Calm';
+      final mode = _store.getString('pref_practice_mode') ?? 'Guided';
+      final bellId =
+          _store.getString('pref_selected_bell_id') ?? 'bell_meditation';
+      final practiceId =
+          _store.getString('pref_selected_practice_id') ?? 'focused_calm';
+      var practiceName =
+          _store.getString('pref_selected_practice_name') ?? 'Focused Calm';
       if (practiceName == 'Trauma-Informed Regulation') {
         practiceName = 'Trauma-Sensitive Grounding';
-        await prefs.setString('pref_selected_practice_name', 'Trauma-Sensitive Grounding');
+        await _store.setString(
+          'pref_selected_practice_name',
+          'Trauma-Sensitive Grounding',
+        );
       }
-      var voiceId = prefs.getString('pref_selected_voice_id') ?? 'grace';
+      var voiceId = _store.getString('pref_selected_voice_id') ?? 'grace';
       if (voiceId.toLowerCase() == 'kia') {
         voiceId = 'grace';
-        await prefs.setString('pref_selected_voice_id', 'grace');
+        await _store.setString('pref_selected_voice_id', 'grace');
       }
-      final voiceIdx = prefs.getInt('pref_selected_voice_idx') ?? 0;
-      final clockHour = prefs.getInt('pref_clock_hour') ?? 8;
-      final clockMin = prefs.getInt('pref_clock_minute') ?? 3;
-      final clockIsAm = prefs.getBool('pref_clock_is_am') ?? true;
+      final voiceIdx = _store.getInt('pref_selected_voice_idx') ?? 0;
+      final clockHour = _store.getInt('pref_clock_hour') ?? 8;
+      final clockMin = _store.getInt('pref_clock_minute') ?? 3;
+      final clockIsAm = _store.getBool('pref_clock_is_am') ?? true;
 
       return SavedState(
         practiceDurationMinutes: duration,
@@ -268,7 +266,7 @@ class PreferencesService {
         redirectionDensity: redirection,
         preparationDelaySeconds: delay,
         practiceMode: mode,
-        bells: BellData.defaultBells,
+        bells: BellData.createDefaultBells(),
         selectedBellId: bellId,
         selectedPractice: practiceName,
         selectedPracticeId: practiceId,
@@ -286,7 +284,7 @@ class PreferencesService {
         redirectionDensity: 3.0,
         preparationDelaySeconds: 3,
         practiceMode: 'Guided',
-        bells: BellData.defaultBells,
+        bells: BellData.createDefaultBells(),
         selectedBellId: 'bell_meditation',
         selectedPractice: 'Focused Calm',
         selectedPracticeId: 'focused_calm',

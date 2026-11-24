@@ -1,11 +1,10 @@
 import 'dart:async';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:material_ui/material_ui.dart';
+import '../audio/audio_sources.dart';
 import '../models/audio_models.dart';
 import '../models/practice_config.dart';
 import '../models/voice_config.dart';
-import '../services/audio_manifest_service.dart';
-import '../services/preferences_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/voice_stepper_card.dart';
 
@@ -15,6 +14,14 @@ class ManageVoicesScreen extends StatefulWidget {
   final ValueChanged<List<VoiceConfig>> onVoicesUpdated;
   final VoidCallback? onBack;
   final AudioPlayer? audioPlayer;
+  final bool? isDeveloperMode;
+  final List<ScriptVariant> Function(String segmentCode)? variantsProvider;
+  final ResolvedAudio Function({
+    required String voiceId,
+    required String segmentCode,
+    required String variantId,
+  })? voiceAudioResolver;
+  final Future<void> Function()? onInitializeManifest;
 
   const ManageVoicesScreen({
     super.key,
@@ -24,9 +31,10 @@ class ManageVoicesScreen extends StatefulWidget {
     this.onBack,
     this.audioPlayer,
     this.isDeveloperMode,
+    this.variantsProvider,
+    this.voiceAudioResolver,
+    this.onInitializeManifest,
   });
-
-  final bool? isDeveloperMode;
 
   @override
   State<ManageVoicesScreen> createState() => _ManageVoicesScreenState();
@@ -36,7 +44,7 @@ class _ManageVoicesScreenState extends State<ManageVoicesScreen> {
   late List<VoiceConfig> _voices;
   late String _selectedVoiceId;
 
-  bool get _isDevMode => widget.isDeveloperMode ?? AudioManifestService.isDeveloperMode;
+  bool get _isDevMode => widget.isDeveloperMode ?? false;
 
   static const List<String> _segmentCodes = [
     'S01', 'S02', 'S03', 'S04', 'S05', 'S06', 'S07', 'S08',
@@ -82,15 +90,19 @@ class _ManageVoicesScreenState extends State<ManageVoicesScreen> {
       }
     });
 
-    AudioManifestService.initialize();
+    if (widget.onInitializeManifest != null) {
+      unawaited(widget.onInitializeManifest!().then((_) {
+        if (mounted) setState(() {});
+      }));
+    }
   }
 
   @override
   void dispose() {
-    _playerCompleteSubscription?.cancel();
-    _audioPlayer.stop();
+    unawaited(_playerCompleteSubscription?.cancel());
+    unawaited(_audioPlayer.stop());
     if (_ownsAudioPlayer) {
-      _audioPlayer.dispose();
+      unawaited(_audioPlayer.dispose());
     }
     super.dispose();
   }
@@ -105,7 +117,8 @@ class _ManageVoicesScreenState extends State<ManageVoicesScreen> {
   String get currentSegmentCode => _segmentCodes[_selectedSegmentIndex];
 
   List<ScriptVariant> get currentVariants {
-    return AudioManifestService.getVariantsForSegment(currentSegmentCode);
+    return widget.variantsProvider?.call(currentSegmentCode) ??
+        const <ScriptVariant>[];
   }
 
   ScriptVariant? get currentVariant {
@@ -118,7 +131,6 @@ class _ManageVoicesScreenState extends State<ManageVoicesScreen> {
   }
 
   void _saveAndNotify() {
-    PreferencesService.saveVoices(_voices);
     widget.onVoicesUpdated(_voices);
   }
 
@@ -143,17 +155,12 @@ class _ManageVoicesScreenState extends State<ManageVoicesScreen> {
     final variant = currentVariant;
     if (variant == null) return;
 
-    final variantId = variant.variantId;
-    final audioPath = AudioManifestService.getAudioAssetPath(
-      voice: voice.id,
+    final resolved = widget.voiceAudioResolver?.call(
+      voiceId: voice.id,
       segmentCode: seg,
-      variantId: variantId,
+      variantId: variant.variantId,
     );
-    String cleanPath =
-        audioPath.startsWith('assets/') ? audioPath.substring(7) : audioPath;
-    if (cleanPath.startsWith('audio/voices/')) {
-      cleanPath = cleanPath.replaceFirst('audio/voices/', 'audio/');
-    }
+    if (resolved == null) return;
 
     if (mounted) {
       setState(() {
@@ -162,7 +169,7 @@ class _ManageVoicesScreenState extends State<ManageVoicesScreen> {
     }
 
     try {
-      await _audioPlayer.play(AssetSource(cleanPath));
+      await _audioPlayer.play(resolved.source);
     } catch (e) {
       if (mounted) {
         setState(() {

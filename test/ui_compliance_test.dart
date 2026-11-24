@@ -15,15 +15,18 @@ import 'package:setandsit/screens/manage_voices_screen.dart';
 import 'package:setandsit/screens/practice_screen.dart';
 import 'package:setandsit/screens/session_debug_screen.dart';
 import 'package:setandsit/screens/settings_screen.dart';
+import 'package:setandsit/models/display_preferences.dart';
 import 'package:setandsit/services/preferences_service.dart';
+import 'package:setandsit/shell/shared_preferences_key_value_store.dart';
 import 'package:setandsit/theme/app_theme.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
+  late PreferencesService preferencesService;
+
   setUp(() async {
-    PreferencesService.resetCache();
     SharedPreferences.setMockInitialValues({
       'pref_clock_hour': 8,
       'pref_clock_minute': 3,
@@ -31,7 +34,8 @@ void main() {
       'pref_duration': 3,
       'pref_prep_delay': 3,
     });
-    await PreferencesService.init();
+    final store = await SharedPreferencesKeyValueStore.open();
+    preferencesService = PreferencesService(store);
     PackageInfo.setMockInitialValues(
       appName: 'Set&Sit',
       packageName: 'com.example.setandsit',
@@ -43,27 +47,27 @@ void main() {
 
   group('Display & Appearance Preferences', () {
     test('PreferencesService round-trips themeMode and clamps fontSizePx to 2px stops', () async {
-      expect(await PreferencesService.loadThemeMode(), ThemeMode.system);
-      expect(await PreferencesService.loadFontSizePx(), 18);
+      expect(await preferencesService.loadThemeMode(), ThemeMode.system);
+      expect(await preferencesService.loadFontSizePx(), 18);
 
-      await PreferencesService.saveThemeMode(ThemeMode.dark);
-      expect(await PreferencesService.loadThemeMode(), ThemeMode.dark);
+      await preferencesService.saveThemeMode(ThemeMode.dark);
+      expect(await preferencesService.loadThemeMode(), ThemeMode.dark);
 
-      await PreferencesService.saveThemeMode(ThemeMode.light);
-      expect(await PreferencesService.loadThemeMode(), ThemeMode.light);
+      await preferencesService.saveThemeMode(ThemeMode.light);
+      expect(await preferencesService.loadThemeMode(), ThemeMode.light);
 
-      await PreferencesService.saveFontSizePx(24);
-      expect(await PreferencesService.loadFontSizePx(), 24);
+      await preferencesService.saveFontSizePx(24);
+      expect(await preferencesService.loadFontSizePx(), 24);
 
       // Out-of-bounds and odd values clamp/snap to 2px stops [14..24]
-      await PreferencesService.saveFontSizePx(10);
-      expect(await PreferencesService.loadFontSizePx(), 14);
+      await preferencesService.saveFontSizePx(10);
+      expect(await preferencesService.loadFontSizePx(), 14);
 
-      await PreferencesService.saveFontSizePx(30);
-      expect(await PreferencesService.loadFontSizePx(), 24);
+      await preferencesService.saveFontSizePx(30);
+      expect(await preferencesService.loadFontSizePx(), 24);
 
-      await PreferencesService.saveFontSizePx(19);
-      expect(await PreferencesService.loadFontSizePx(), 20);
+      await preferencesService.saveFontSizePx(19);
+      expect(await preferencesService.loadFontSizePx(), 20);
     });
 
     testWidgets('Settings Display & Appearance updates ThemeMode and Text Size and persists',
@@ -87,7 +91,7 @@ void main() {
       expect(find.text('System'), findsOneWidget);
       expect(find.text('Light'), findsOneWidget);
       expect(find.text('Dark'), findsOneWidget);
-      for (final px in PreferencesService.allowedFontSizes) {
+      for (final px in DisplayPreferences.allowedFontSizes) {
         expect(find.text('${px}px'), findsOneWidget);
       }
 
@@ -105,8 +109,8 @@ void main() {
       await tester.pumpAndSettle();
 
       // Verify persistence
-      expect(await PreferencesService.loadThemeMode(), ThemeMode.dark);
-      expect(await PreferencesService.loadFontSizePx(), 24);
+      expect(await preferencesService.loadThemeMode(), ThemeMode.dark);
+      expect(await preferencesService.loadFontSizePx(), 24);
 
       // Verify MaterialApp reflects dark ThemeMode and scaled MediaQuery
       final materialApp = tester.widget<MaterialApp>(find.byType(MaterialApp));

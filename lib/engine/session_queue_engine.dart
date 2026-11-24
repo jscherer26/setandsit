@@ -1,12 +1,26 @@
 import 'dart:math';
 import 'package:flutter/foundation.dart';
+
+import '../audio/audio_sources.dart';
+import '../audio/bundled_audio_sources.dart';
 import '../models/audio_models.dart';
 import '../models/practice_config.dart';
 import '../models/voice_config.dart';
 import '../services/audio_manifest_service.dart';
 
 class SessionQueueEngine {
-  static final Random _random = Random();
+  final AudioManifestService _manifestService;
+  final AudioSourceResolver _audioSourceResolver;
+  final Random _random;
+
+  SessionQueueEngine({
+    AudioManifestService? manifestService,
+    AudioSourceResolver? audioSourceResolver,
+    Random? random,
+  })  : _manifestService = manifestService ?? AudioManifestService(),
+        _audioSourceResolver =
+            audioSourceResolver ?? const BundledAudioSourceResolver(),
+        _random = random ?? Random();
 
   /// Protected frame segments never pruned in sessions >= 5 minutes.
   static const List<String> protectedFrame = [
@@ -221,11 +235,12 @@ class SessionQueueEngine {
 
   /// Generates a silent session with only an ending bell.
   /// (Opening bell removed as meditations do not start with a bell).
-  static List<SessionItem> generateSilentSessionQueue({
+  List<SessionItem> generateSilentSessionQueue({
     required int targetDurationSeconds,
     required AudioSegment selectedBell,
   }) {
     final endingBellDuration = selectedBell.durationSeconds.toDouble();
+    final resolvedBell = _audioSourceResolver.resolveBellClip(selectedBell);
 
     // The silent practice runs for the duration minus the ending bell
     final silenceSeconds = max(
@@ -246,9 +261,10 @@ class SessionQueueEngine {
       id: '${selectedBell.id}_end',
       displayTitle: '${selectedBell.title} (Closing)',
       phaseName: 'Re-Orientation & Close',
-      audioAssetPath: selectedBell.filePath,
+      audioAssetPath: resolvedBell.debugLabel,
       durationSeconds: endingBellDuration,
       isBell: true,
+      bellId: selectedBell.id,
     ));
 
     return queue;
@@ -257,7 +273,7 @@ class SessionQueueEngine {
   /// Generates a clinical guided session queue based on the selected Archetype/Practice,
   /// voice persona, exact end-time duration, and 3-Zone Silence & Pruning Engine.
   /// Dual-player overlap is used for S16 (bell strikes first, voice triggers at +2.5s).
-  static List<SessionItem> generateGuidedSessionQueue({
+  List<SessionItem> generateGuidedSessionQueue({
     required int targetDurationSeconds,
     PracticeConfig? practice,
     ClinicalArchetype? archetype,
@@ -271,7 +287,9 @@ class SessionQueueEngine {
 
     final trimmed = voicePersona.trim();
     final vNorm = trimmed.isEmpty
-        ? (VoiceConfig.defaultVoices.isNotEmpty ? VoiceConfig.defaultVoices.first.id : 'grace')
+        ? (VoiceConfig.defaultVoices.isNotEmpty
+            ? VoiceConfig.defaultVoices.first.id
+            : 'grace')
         : trimmed.toLowerCase();
     const s16OverlapDelaySec = 2.5;
 
@@ -285,7 +303,7 @@ class SessionQueueEngine {
       var total = 0.0;
       for (final seg in segs) {
         final variant = selectedVariants[seg]!;
-        final dur = AudioManifestService.getAudioDuration(
+        final dur = _manifestService.getAudioDuration(
           voice: vNorm,
           segmentCode: seg.code,
           variantId: variant.variantId,
@@ -310,7 +328,8 @@ class SessionQueueEngine {
     if (targetDurationSeconds < 300) {
       // --- Section 4: Test Mode Bypass for Ultra-Short Sessions (< 300s) ---
       if (targetDurationSeconds <= 120) {
-        final primarySig = getPrimarySignatureSegmentForPractice(effectivePractice);
+        final primarySig =
+            getPrimarySignatureSegmentForPractice(effectivePractice);
         activeSegments = [
           ClinicalSegment.S01,
           primarySig,
@@ -327,7 +346,7 @@ class SessionQueueEngine {
       }
 
       for (final seg in activeSegments) {
-        final variants = AudioManifestService.getVariantsForSegment(seg.code);
+        final variants = _manifestService.getVariantsForSegment(seg.code);
         if (variants.isEmpty) {
           selectedVariants[seg] = ScriptVariant(
             variantId: 'v01',
@@ -364,7 +383,8 @@ class SessionQueueEngine {
           continue;
         }
         final w = getShortSessionWeight(seg);
-        final silence = totalWeight > 0 ? (silencePool * (w / totalWeight)).round() : 0;
+        final silence =
+            totalWeight > 0 ? (silencePool * (w / totalWeight)).round() : 0;
         postSilenceMap[seg] = silence;
         assignedOtherSilence += silence;
       }
@@ -372,7 +392,8 @@ class SessionQueueEngine {
       if (activeSegments.contains(ClinicalSegment.S12)) {
         final s12Silence = max(
           0,
-          (targetDurationSeconds - totalAudioSeconds - assignedOtherSilence).round(),
+          (targetDurationSeconds - totalAudioSeconds - assignedOtherSilence)
+              .round(),
         );
         postSilenceMap[ClinicalSegment.S12] = s12Silence;
       }
@@ -383,7 +404,7 @@ class SessionQueueEngine {
           .toList();
 
       for (final seg in activeSegments) {
-        final variants = AudioManifestService.getVariantsForSegment(seg.code);
+        final variants = _manifestService.getVariantsForSegment(seg.code);
         if (variants.isEmpty) {
           selectedVariants[seg] = ScriptVariant(
             variantId: 'v01',
@@ -399,13 +420,15 @@ class SessionQueueEngine {
 
       var totalAudioSeconds = calcTotalAudio(activeSegments);
       var totalPacingSeconds = calcTotalPacing(activeSegments);
-      var remainingSilence = targetDurationSeconds - totalAudioSeconds - totalPacingSeconds;
+      var remainingSilence =
+          targetDurationSeconds - totalAudioSeconds - totalPacingSeconds;
       var activeZone2 = activeSegments.where((s) => isZone2(s)).toList();
 
       // Pruning Loop Check: In short sessions (<= 300s) or if remaining silence window
       // is constrained (< 45s), prune lower-priority segments sequentially until only
       // protected frame and signature pair remain.
-      while (activeZone2.length > 1 && (targetDurationSeconds <= 300 || remainingSilence < 45.0)) {
+      while (activeZone2.length > 1 &&
+          (targetDurationSeconds <= 300 || remainingSilence < 45.0)) {
         ClinicalSegment? toPrune;
         for (final code in pruningPriorityOrder) {
           if (protectedFrame.contains(code) || sigPair.contains(code)) continue;
@@ -428,7 +451,8 @@ class SessionQueueEngine {
 
         totalAudioSeconds = calcTotalAudio(activeSegments);
         totalPacingSeconds = calcTotalPacing(activeSegments);
-        remainingSilence = targetDurationSeconds - totalAudioSeconds - totalPacingSeconds;
+        remainingSilence =
+            targetDurationSeconds - totalAudioSeconds - totalPacingSeconds;
         activeZone2 = activeSegments.where((s) => isZone2(s)).toList();
       }
 
@@ -452,7 +476,8 @@ class SessionQueueEngine {
       if (activeSegments.contains(ClinicalSegment.S12)) {
         final s12Silence = max(
           0,
-          (targetDurationSeconds - totalAudioSeconds - assignedOtherSilence).round(),
+          (targetDurationSeconds - totalAudioSeconds - assignedOtherSilence)
+              .round(),
         );
         postSilenceMap[ClinicalSegment.S12] = s12Silence;
       }
@@ -462,70 +487,97 @@ class SessionQueueEngine {
     var totalCalculatedSec = 0.0;
     for (final seg in activeSegments) {
       final variant = selectedVariants[seg]!;
-      final voiceDur = AudioManifestService.getAudioDuration(
+      final voiceDur = _manifestService.getAudioDuration(
         voice: vNorm,
         segmentCode: seg.code,
         variantId: variant.variantId,
       );
-      final dur = seg == ClinicalSegment.S16 ? s16OverlapDelaySec + voiceDur : voiceDur;
+      final dur = seg == ClinicalSegment.S16
+          ? s16OverlapDelaySec + voiceDur
+          : voiceDur;
       final silence = postSilenceMap[seg] ?? 0;
       totalCalculatedSec += dur + silence;
     }
 
     debugPrint('=== SessionQueueEngine Queue Generated ===');
-    debugPrint('Selected Archetype: ${effectivePractice.name} | Target Duration: ${targetDurationSeconds}s');
-    debugPrint('Pruned Segments: ${prunedSegments.isEmpty ? 'None' : prunedSegments.join(', ')}');
+    debugPrint(
+      'Selected Archetype: ${effectivePractice.name} | Target Duration: ${targetDurationSeconds}s',
+    );
+    debugPrint(
+      'Pruned Segments: ${prunedSegments.isEmpty ? 'None' : prunedSegments.join(', ')}',
+    );
     debugPrint('Final Ordered Segment List:');
     for (final seg in activeSegments) {
       final variant = selectedVariants[seg]!;
-      final voiceDur = AudioManifestService.getAudioDuration(
+      final voiceDur = _manifestService.getAudioDuration(
         voice: vNorm,
         segmentCode: seg.code,
         variantId: variant.variantId,
       );
-      final dur = seg == ClinicalSegment.S16 ? s16OverlapDelaySec + voiceDur : voiceDur;
+      final dur = seg == ClinicalSegment.S16
+          ? s16OverlapDelaySec + voiceDur
+          : voiceDur;
       final silence = (postSilenceMap[seg] ?? 0).toDouble();
       final zone = getZoneLabel(seg);
-      debugPrint('  [${seg.code}_${variant.variantId}] Audio: ${dur.toStringAsFixed(1)}s | Post-SilenceGap: ${silence.toStringAsFixed(1)}s ($zone)');
+      debugPrint(
+        '  [${seg.code}_${variant.variantId}] Audio: ${dur.toStringAsFixed(1)}s | Post-SilenceGap: ${silence.toStringAsFixed(1)}s ($zone)',
+      );
     }
-    debugPrint('Total Calculated Duration: ${totalCalculatedSec.toStringAsFixed(1)}s vs. Target Duration: ${targetDurationSeconds}s');
+    debugPrint(
+      'Total Calculated Duration: ${totalCalculatedSec.toStringAsFixed(1)}s vs. Target Duration: ${targetDurationSeconds}s',
+    );
 
     // --- Construct Final Playback Queue ---
+    final resolvedBell = _audioSourceResolver.resolveBellClip(selectedBell);
     final queue = <SessionItem>[];
     for (final seg in activeSegments) {
       final variant = selectedVariants[seg]!;
-      final assetPath = AudioManifestService.getAudioAssetPath(
+      final isStaged = _manifestService.isDeveloperMode &&
+          _manifestService.hasStagedAudio(
+            voice: vNorm,
+            segmentCode: seg.code,
+            variantId: variant.variantId,
+          );
+      final resolvedVoice = _manifestService.resolveVoiceAudio(
         voice: vNorm,
         segmentCode: seg.code,
         variantId: variant.variantId,
       );
-      final voiceDur = AudioManifestService.getAudioDuration(
+      final voiceDur = _manifestService.getAudioDuration(
         voice: vNorm,
         segmentCode: seg.code,
         variantId: variant.variantId,
       );
-      final varNum = _extractVariantNumber(variant.variantId, variant.variantName);
+      final varNum =
+          _extractVariantNumber(variant.variantId, variant.variantName);
 
       if (seg == ClinicalSegment.S16) {
         queue.add(PlayAudioItem(
           id: 'S16_${variant.variantId}',
           displayTitle: 'Closing Guidance ($varNum)',
           phaseName: 'Re-Orientation & Close',
-          audioAssetPath: assetPath,
+          audioAssetPath: resolvedVoice.debugLabel,
           durationSeconds: s16OverlapDelaySec + voiceDur,
           segment: ClinicalSegment.S16,
           text: variant.cleanText,
-          bellAssetPath: selectedBell.filePath,
+          bellAssetPath: resolvedBell.debugLabel,
+          voiceId: vNorm,
+          variantId: variant.variantId,
+          isStagedOverride: isStaged,
+          bellId: selectedBell.id,
         ));
       } else {
         queue.add(PlayAudioItem(
           id: '${seg.code}_${variant.variantId}',
           displayTitle: '${seg.title} ($varNum)',
           phaseName: seg.phase,
-          audioAssetPath: assetPath,
+          audioAssetPath: resolvedVoice.debugLabel,
           durationSeconds: voiceDur,
           segment: seg,
           text: variant.cleanText,
+          voiceId: vNorm,
+          variantId: variant.variantId,
+          isStagedOverride: isStaged,
         ));
       }
 
@@ -566,7 +618,8 @@ class SessionQueueEngine {
     if (match != null) {
       return match.group(1)!;
     }
-    final numOnly = int.tryParse(variantId.replaceFirst(RegExp(r'^[vV]'), ''));
+    final numOnly =
+        int.tryParse(variantId.replaceFirst(RegExp(r'^[vV]'), ''));
     if (numOnly != null) {
       return numOnly.toString();
     }

@@ -1,5 +1,5 @@
 import 'package:material_ui/material_ui.dart';
-import '../services/preferences_service.dart';
+import '../models/display_preferences.dart';
 import '../theme/app_theme.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -9,6 +9,7 @@ class SettingsScreen extends StatefulWidget {
   final int preparationDelaySeconds;
   final ThemeMode themeMode;
   final int fontSizePx;
+  final bool showDisplaySettings;
   final ValueChanged<ThemeMode>? onThemeModeChanged;
   final ValueChanged<int>? onFontSizePxChanged;
   final bool isDeveloperMode;
@@ -31,7 +32,8 @@ class SettingsScreen extends StatefulWidget {
     required this.redirectionDensity,
     this.preparationDelaySeconds = 3,
     this.themeMode = ThemeMode.system,
-    this.fontSizePx = PreferencesService.defaultFontSizePx,
+    this.fontSizePx = DisplayPreferences.defaultFontSizePx,
+    this.showDisplaySettings = true,
     this.onThemeModeChanged,
     this.onFontSizePxChanged,
     this.isDeveloperMode = false,
@@ -604,101 +606,103 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ],
 
                   // 3. Display & Appearance Card
-                  const SizedBox(height: 18),
-                  Text(
-                    'Display & Appearance',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: semantic.muted,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(20),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Theme',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w500,
-                              color: colorScheme.onSurface,
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-                          SizedBox(
-                            width: double.infinity,
-                            child: SegmentedButton<ThemeMode>(
-                              showSelectedIcon: false,
-                              segments: const [
-                                ButtonSegment<ThemeMode>(
-                                  value: ThemeMode.system,
-                                  label: FittedBox(
-                                    fit: BoxFit.scaleDown,
-                                    child: Text('System', maxLines: 1),
-                                  ),
-                                ),
-                                ButtonSegment<ThemeMode>(
-                                  value: ThemeMode.light,
-                                  label: FittedBox(
-                                    fit: BoxFit.scaleDown,
-                                    child: Text('Light', maxLines: 1),
-                                  ),
-                                ),
-                                ButtonSegment<ThemeMode>(
-                                  value: ThemeMode.dark,
-                                  label: FittedBox(
-                                    fit: BoxFit.scaleDown,
-                                    child: Text('Dark', maxLines: 1),
-                                  ),
-                                ),
-                              ],
-                              selected: {widget.themeMode},
-                              onSelectionChanged: (selection) {
-                                if (selection.isNotEmpty) {
-                                  widget.onThemeModeChanged?.call(selection.first);
-                                }
-                              },
-                            ),
-                          ),
-
-                          const Padding(
-                            padding: EdgeInsets.symmetric(vertical: 16),
-                            child: Divider(),
-                          ),
-
-                          Text(
-                            'Text Size',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w500,
-                              color: colorScheme.onSurface,
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-                          Wrap(
-                            spacing: 8,
-                            runSpacing: 8,
-                            children: PreferencesService.allowedFontSizes.map((px) {
-                              final isSelected = widget.fontSizePx == px;
-                              return ChoiceChip(
-                                label: Text('${px}px'),
-                                selected: isSelected,
-                                onSelected: (selected) {
-                                  if (selected) {
-                                    widget.onFontSizePxChanged?.call(px);
-                                  }
-                                },
-                              );
-                            }).toList(),
-                          ),
-                        ],
+                  if (widget.showDisplaySettings) ...[
+                    const SizedBox(height: 18),
+                    Text(
+                      'Display & Appearance',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: semantic.muted,
                       ),
                     ),
-                  ),
+                    const SizedBox(height: 8),
+                    Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(20),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Theme',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w500,
+                                color: colorScheme.onSurface,
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            SizedBox(
+                              width: double.infinity,
+                              child: SegmentedButton<ThemeMode>(
+                                showSelectedIcon: false,
+                                segments: const [
+                                  ButtonSegment<ThemeMode>(
+                                    value: ThemeMode.system,
+                                    label: FittedBox(
+                                      fit: BoxFit.scaleDown,
+                                      child: Text('System', maxLines: 1),
+                                    ),
+                                  ),
+                                  ButtonSegment<ThemeMode>(
+                                    value: ThemeMode.light,
+                                    label: FittedBox(
+                                      fit: BoxFit.scaleDown,
+                                      child: Text('Light', maxLines: 1),
+                                    ),
+                                  ),
+                                  ButtonSegment<ThemeMode>(
+                                    value: ThemeMode.dark,
+                                    label: FittedBox(
+                                      fit: BoxFit.scaleDown,
+                                      child: Text('Dark', maxLines: 1),
+                                    ),
+                                  ),
+                                ],
+                                selected: {widget.themeMode},
+                                onSelectionChanged: (selection) {
+                                  if (selection.isNotEmpty) {
+                                    widget.onThemeModeChanged?.call(selection.first);
+                                  }
+                                },
+                              ),
+                            ),
+
+                            const Padding(
+                              padding: EdgeInsets.symmetric(vertical: 16),
+                              child: Divider(),
+                            ),
+
+                            Text(
+                              'Text Size',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w500,
+                                color: colorScheme.onSurface,
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: DisplayPreferences.allowedFontSizes.map((px) {
+                                final isSelected = widget.fontSizePx == px;
+                                return ChoiceChip(
+                                  label: Text('${px}px'),
+                                  selected: isSelected,
+                                  onSelected: (selected) {
+                                    if (selected) {
+                                      widget.onFontSizePxChanged?.call(px);
+                                    }
+                                  },
+                                );
+                              }).toList(),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
 
                   // 4. About Card
                   if (widget.onOpenAbout != null) ...[

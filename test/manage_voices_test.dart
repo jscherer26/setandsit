@@ -10,6 +10,7 @@ import 'package:setandsit/screens/configuration_screen.dart';
 import 'package:setandsit/screens/manage_voices_screen.dart';
 import 'package:setandsit/services/audio_manifest_service.dart';
 import 'package:setandsit/services/preferences_service.dart';
+import 'package:setandsit/shell/shared_preferences_key_value_store.dart';
 import 'package:setandsit/widgets/voice_stepper_card.dart';
 
 class FakeAudioplayersPlatform extends AudioplayersPlatformInterface {
@@ -27,7 +28,7 @@ class FakeAudioplayersPlatform extends AudioplayersPlatformInterface {
 
   @override
   Future<void> dispose(String playerId) async {
-    _eventStreamControllers[playerId]?.close();
+    await _eventStreamControllers[playerId]?.close();
     _eventStreamControllers.remove(playerId);
   }
 
@@ -93,10 +94,15 @@ class FakeAudioplayersPlatform extends AudioplayersPlatformInterface {
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
+  late PreferencesService preferencesService;
+  late AudioManifestService manifestService;
+
   setUp(() async {
-    PreferencesService.resetCache();
     SharedPreferences.setMockInitialValues({});
-    await AudioManifestService.initialize();
+    final store = await SharedPreferencesKeyValueStore.open();
+    preferencesService = PreferencesService(store);
+    manifestService = AudioManifestService();
+    await manifestService.initialize();
     AudioplayersPlatformInterface.instance = FakeAudioplayersPlatform();
   });
 
@@ -153,8 +159,8 @@ void main() {
         ),
       ];
 
-      await PreferencesService.saveVoices(customVoices);
-      final loaded = await PreferencesService.loadVoices();
+      await preferencesService.saveVoices(customVoices);
+      final loaded = await preferencesService.loadVoices();
 
       expect(loaded.length, 2);
       expect(loaded[0].id, 'grace');
@@ -177,6 +183,17 @@ void main() {
           home: ManageVoicesScreen(
             isDeveloperMode: true,
             initialVoices: VoiceConfig.defaultVoices,
+            variantsProvider: manifestService.getVariantsForSegment,
+            voiceAudioResolver: ({
+              required String voiceId,
+              required String segmentCode,
+              required String variantId,
+            }) =>
+                manifestService.resolveVoiceAudio(
+              voice: voiceId,
+              segmentCode: segmentCode,
+              variantId: variantId,
+            ),
             onVoicesUpdated: (_) {},
           ),
         ),
@@ -292,6 +309,17 @@ void main() {
           home: ManageVoicesScreen(
             isDeveloperMode: true,
             initialVoices: VoiceConfig.defaultVoices,
+            variantsProvider: manifestService.getVariantsForSegment,
+            voiceAudioResolver: ({
+              required String voiceId,
+              required String segmentCode,
+              required String variantId,
+            }) =>
+                manifestService.resolveVoiceAudio(
+              voice: voiceId,
+              segmentCode: segmentCode,
+              variantId: variantId,
+            ),
             onVoicesUpdated: (_) {},
           ),
         ),
@@ -328,6 +356,17 @@ void main() {
         MaterialApp(
           home: ManageVoicesScreen(
             initialVoices: VoiceConfig.defaultVoices,
+            variantsProvider: manifestService.getVariantsForSegment,
+            voiceAudioResolver: ({
+              required String voiceId,
+              required String segmentCode,
+              required String variantId,
+            }) =>
+                manifestService.resolveVoiceAudio(
+              voice: voiceId,
+              segmentCode: segmentCode,
+              variantId: variantId,
+            ),
             onVoicesUpdated: (_) {},
           ),
         ),
@@ -378,6 +417,17 @@ void main() {
           home: ManageVoicesScreen(
             isDeveloperMode: true,
             initialVoices: testVoices,
+            variantsProvider: manifestService.getVariantsForSegment,
+            voiceAudioResolver: ({
+              required String voiceId,
+              required String segmentCode,
+              required String variantId,
+            }) =>
+                manifestService.resolveVoiceAudio(
+              voice: voiceId,
+              segmentCode: segmentCode,
+              variantId: variantId,
+            ),
             onVoicesUpdated: (_) {},
           ),
         ),
@@ -458,7 +508,10 @@ void main() {
           home: Scaffold(
             body: ManageVoicesScreen(
               initialVoices: testVoices,
-              onVoicesUpdated: (u) => updatedList = u,
+              onVoicesUpdated: (u) async {
+                await preferencesService.saveVoices(u);
+                updatedList = u;
+              },
             ),
           ),
         ),
@@ -474,7 +527,7 @@ void main() {
       expect(updatedList!.firstWhere((v) => v.id == 'grace').isIncluded, isFalse);
       expect(updatedList!.firstWhere((v) => v.id == 'voice_two').isIncluded, isTrue);
 
-      final loaded = await PreferencesService.loadVoices();
+      final loaded = await preferencesService.loadVoices();
       expect(loaded.firstWhere((v) => v.id == 'grace').isIncluded, isFalse);
     });
 
@@ -602,7 +655,7 @@ void main() {
         customVoice,
         VoiceConfig.defaultVoices[0].copyWith(isIncluded: true),
       ];
-      await PreferencesService.saveVoices(voices);
+      await preferencesService.saveVoices(voices);
 
       await tester.pumpWidget(const SetAndSitApp());
       await tester.pumpAndSettle();

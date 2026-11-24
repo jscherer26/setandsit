@@ -8,16 +8,24 @@ import 'package:setandsit/models/practice_config.dart';
 import 'package:setandsit/screens/manage_practices_screen.dart';
 import 'package:setandsit/services/audio_manifest_service.dart';
 import 'package:setandsit/services/preferences_service.dart';
+import 'package:setandsit/shell/shared_preferences_key_value_store.dart';
 import 'package:setandsit/widgets/practice_stepper_card.dart';
 import 'package:setandsit/main.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
+  late PreferencesService preferencesService;
+  late AudioManifestService manifestService;
+  late SessionQueueEngine queueEngine;
+
   setUp(() async {
-    PreferencesService.resetCache();
     SharedPreferences.setMockInitialValues({});
-    await AudioManifestService.initialize();
+    final store = await SharedPreferencesKeyValueStore.open();
+    preferencesService = PreferencesService(store);
+    manifestService = AudioManifestService();
+    await manifestService.initialize();
+    queueEngine = SessionQueueEngine(manifestService: manifestService);
   });
 
   group('1. Unified PracticeConfig Data Model & Persistence', () {
@@ -127,8 +135,8 @@ void main() {
         ),
       ];
 
-      await PreferencesService.savePractices(list);
-      final loaded = await PreferencesService.loadPractices();
+      await preferencesService.savePractices(list);
+      final loaded = await preferencesService.loadPractices();
 
       expect(loaded.length, 5);
       expect(loaded.last.id, 'custom_test_1');
@@ -149,7 +157,7 @@ void main() {
       );
 
       final bell = BellData.defaultBells.first;
-      final queue = SessionQueueEngine.generateGuidedSessionQueue(
+      final queue = queueEngine.generateGuidedSessionQueue(
         targetDurationSeconds: 600,
         practice: customPractice,
         voicePersona: 'grace',
@@ -615,7 +623,7 @@ void main() {
         PracticeConfig.defaultPractices[3].copyWith(isIncluded: false), // Metta (excluded)
       ];
 
-      await PreferencesService.savePractices(practices);
+      await preferencesService.savePractices(practices);
 
       await tester.pumpWidget(const SetAndSitApp());
       await tester.pumpAndSettle();

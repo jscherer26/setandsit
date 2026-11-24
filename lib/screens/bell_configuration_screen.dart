@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:material_ui/material_ui.dart';
+import '../audio/audio_sources.dart';
 import '../models/audio_models.dart';
 import '../theme/app_theme.dart';
 
@@ -10,6 +11,7 @@ class BellConfigurationScreen extends StatefulWidget {
   final ValueChanged<String> onBellSelected;
   final ValueChanged<AudioSegment> onBellUpdated;
   final VoidCallback onBack;
+  final AudioSourceResolver? audioSourceResolver;
 
   const BellConfigurationScreen({
     super.key,
@@ -18,6 +20,7 @@ class BellConfigurationScreen extends StatefulWidget {
     required this.onBellSelected,
     required this.onBellUpdated,
     required this.onBack,
+    this.audioSourceResolver,
   });
 
   @override
@@ -55,12 +58,13 @@ class _BellConfigurationScreenState extends State<BellConfigurationScreen> {
     super.dispose();
   }
 
-  void _previewBell(String path) async {
+  void _previewBell(AudioSegment bell) async {
+    final resolved = widget.audioSourceResolver?.resolveBellClip(bell);
+    if (resolved == null) return;
     try {
       await _audioPlayer.stop();
-      final cleanPath = path.replaceFirst('assets/', '');
       setState(() => _isPlaying = true);
-      await _audioPlayer.play(AssetSource(cleanPath));
+      await _audioPlayer.play(resolved.source);
     } catch (e) {
       if (mounted) setState(() => _isPlaying = false);
     }
@@ -232,7 +236,7 @@ class _BellConfigurationScreenState extends State<BellConfigurationScreen> {
                   ),
                   onPressed: _isPlaying
                       ? _stopAudition
-                      : () => _previewBell(currentBell.filePath),
+                      : () => _previewBell(currentBell),
                 ),
               ),
               const SizedBox(height: 16),

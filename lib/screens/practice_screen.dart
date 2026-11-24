@@ -4,6 +4,7 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/foundation.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
+import '../audio/audio_sources.dart';
 import '../models/audio_models.dart';
 import '../theme/app_theme.dart';
 
@@ -25,6 +26,7 @@ class PracticeScreen extends StatefulWidget {
   final bool isDeveloperMode;
   final AudioPlayer? voicePlayer;
   final AudioPlayer? bellPlayer;
+  final AudioSourceResolver? audioSourceResolver;
   final DateTime Function()? nowProvider;
 
   const PracticeScreen({
@@ -46,6 +48,7 @@ class PracticeScreen extends StatefulWidget {
     this.isDeveloperMode = false,
     this.voicePlayer,
     this.bellPlayer,
+    this.audioSourceResolver,
     this.nowProvider,
   });
 
@@ -496,9 +499,53 @@ class _PracticeScreenState extends State<PracticeScreen>
     });
   }
 
-  Future<bool> _playAssetSafely(
+  ResolvedAudio? _resolveSilenceKeepAlive() {
+    return widget.audioSourceResolver?.resolveSilenceKeepAlive();
+  }
+
+  ResolvedAudio? _resolveItemVoice(PlayAudioItem item) {
+    final resolver = widget.audioSourceResolver;
+    if (resolver == null) return null;
+    if (item.voiceId != null && item.segment != null && item.variantId != null) {
+      return resolver.resolveVoiceClip(
+        voiceId: item.voiceId!,
+        segmentCode: item.segment!.code,
+        variantId: item.variantId!,
+        useStagedOverride: item.isStagedOverride,
+      );
+    }
+    return resolver.resolveAudioReference(item.audioAssetPath);
+  }
+
+  ResolvedAudio? _resolveS16Bell(PlayAudioItem item) {
+    final resolver = widget.audioSourceResolver;
+    if (resolver == null) return null;
+    if (widget.selectedBell != null &&
+        (item.bellId == null || item.bellId == widget.selectedBell!.id)) {
+      return resolver.resolveBellClip(widget.selectedBell!);
+    }
+    if (item.bellAssetPath != null) {
+      return resolver.resolveAudioReference(item.bellAssetPath!);
+    }
+    if (widget.selectedBell != null) {
+      return resolver.resolveBellClip(widget.selectedBell!);
+    }
+    return resolver.resolveAudioReference('assets/bells/bell_meditation.mp3');
+  }
+
+  ResolvedAudio? _resolveStandaloneBell(PlayAudioItem item) {
+    final resolver = widget.audioSourceResolver;
+    if (resolver == null) return null;
+    if (widget.selectedBell != null &&
+        (item.bellId == null || item.bellId == widget.selectedBell!.id)) {
+      return resolver.resolveBellClip(widget.selectedBell!);
+    }
+    return resolver.resolveAudioReference(item.audioAssetPath);
+  }
+
+  Future<bool> _playResolvedSafely(
     AudioPlayer player,
-    String assetPath, {
+    ResolvedAudio? resolved, {
     required double volume,
     required ReleaseMode releaseMode,
     required int generation,
@@ -506,13 +553,14 @@ class _PracticeScreenState extends State<PracticeScreen>
     void Function()? onFailure,
     String? errorLabel,
   }) async {
+    if (resolved == null) return false;
     try {
       await player.setReleaseMode(releaseMode);
       if (_isStale(generation)) return false;
       await player.setVolume(volume);
       if (_isStale(generation)) return false;
       beforePlay?.call();
-      await player.play(AssetSource(assetPath));
+      await player.play(resolved.source);
       if (_isStale(generation)) return false;
       if (_needsAudioResume && mounted) {
         setState(() => _needsAudioResume = false);
@@ -520,7 +568,9 @@ class _PracticeScreenState extends State<PracticeScreen>
       return true;
     } catch (e) {
       onFailure?.call();
-      debugPrint('[PracticeScreen] Error playing ${errorLabel ?? assetPath}: $e');
+      debugPrint(
+        '[PracticeScreen] Error playing ${errorLabel ?? resolved.debugLabel}: $e',
+      );
       if (kIsWeb && !_isStale(generation) && mounted) {
         setState(() => _needsAudioResume = true);
       }
@@ -530,9 +580,9 @@ class _PracticeScreenState extends State<PracticeScreen>
 
   Future<void> _restartSilenceKeepAlive() async {
     final gen = _playbackGeneration;
-    await _playAssetSafely(
+    await _playResolvedSafely(
       _voicePlayer,
-      'audio/silence.mp3',
+      _resolveSilenceKeepAlive(),
       volume: 0.0,
       releaseMode: ReleaseMode.loop,
       generation: gen,
@@ -581,9 +631,9 @@ class _PracticeScreenState extends State<PracticeScreen>
       }
 
       // Loop silent audio asset so OS maintains active media playback & keeps CPU awake
-      await _playAssetSafely(
+      await _playResolvedSafely(
         _voicePlayer,
-        'audio/silence.mp3',
+        _resolveSilenceKeepAlive(),
         volume: 0.0,
         releaseMode: ReleaseMode.loop,
         generation: gen,
@@ -645,20 +695,17 @@ class _PracticeScreenState extends State<PracticeScreen>
         // --- Phase 2: Dual-Player Overlap Engine for S16 ---
         _isVoiceSegmentPlaying = false; // Voice triggers at +2.5s over decaying bell
 
-        final bellAsset = (item.bellAssetPath ??
-                widget.selectedBell?.filePath ??
-                'bells/bell_meditation.mp3')
-            .replaceFirst('assets/', '');
-        final voiceAsset = item.audioAssetPath.replaceFirst('assets/', '');
+        final bellAudio = _resolveS16Bell(item);
+        final voiceAudio = _resolveItemVoice(item);
 
         // Calibrated gain: strike closing singing bowl / chime at 100% target volume (1.0)
         final bellVol = _isMuted ? 0.35 : 1.0;
         final voiceVol = _isMuted ? 0.0 : 1.0;
 
         // 1. Instantly fire the acoustic bell asset using _bellPlayer
-        await _playAssetSafely(
+        await _playResolvedSafely(
           _bellPlayer,
-          bellAsset,
+          bellAudio,
           volume: bellVol,
           releaseMode: ReleaseMode.release,
           generation: gen,
@@ -672,9 +719,9 @@ class _PracticeScreenState extends State<PracticeScreen>
         // When the timer triggers, play the chosen S16 voice variant using _voicePlayer
         _overlapTimer = Timer(const Duration(milliseconds: 2500), () async {
           if (_isStale(gen)) return;
-          await _playAssetSafely(
+          await _playResolvedSafely(
             _voicePlayer,
-            voiceAsset,
+            voiceAudio,
             volume: voiceVol,
             releaseMode: ReleaseMode.release,
             generation: gen,
@@ -686,11 +733,10 @@ class _PracticeScreenState extends State<PracticeScreen>
       } else if (isBellOnly) {
         // Standalone bell playback on dedicated _bellPlayer
         _isVoiceSegmentPlaying = false;
-        final rawPath = item.audioAssetPath.replaceFirst('assets/', '');
         final volume = _isMuted ? 0.35 : 1.0;
-        await _playAssetSafely(
+        await _playResolvedSafely(
           _bellPlayer,
-          rawPath,
+          _resolveStandaloneBell(item),
           volume: volume,
           releaseMode: ReleaseMode.release,
           generation: gen,
@@ -702,11 +748,10 @@ class _PracticeScreenState extends State<PracticeScreen>
       } else {
         // Standard sequential playback for S01 through S15 on _voicePlayer
         _isBellSegmentPlaying = false;
-        final rawPath = item.audioAssetPath.replaceFirst('assets/', '');
         final volume = _isMuted ? 0.0 : 1.0;
-        await _playAssetSafely(
+        await _playResolvedSafely(
           _voicePlayer,
-          rawPath,
+          _resolveItemVoice(item),
           volume: volume,
           releaseMode: ReleaseMode.release,
           generation: gen,
@@ -795,9 +840,15 @@ class _PracticeScreenState extends State<PracticeScreen>
         try {
           _bellPlayer.setReleaseMode(ReleaseMode.release).catchError((_) {});
           _bellPlayer.setVolume(0.35).catchError((_) {});
-          final bellAsset = (widget.selectedBell?.filePath ?? 'bells/bell_meditation.mp3')
-              .replaceFirst('assets/', '');
-          _bellPlayer.play(AssetSource(bellAsset)).catchError((_) {});
+          final resolver = widget.audioSourceResolver;
+          final resolvedBell = resolver != null
+              ? (widget.selectedBell != null
+                  ? resolver.resolveBellClip(widget.selectedBell!)
+                  : resolver.resolveAudioReference('assets/bells/bell_meditation.mp3'))
+              : null;
+          if (resolvedBell != null) {
+            _bellPlayer.play(resolvedBell.source).catchError((_) {});
+          }
         } catch (_) {}
       }
     }
@@ -813,9 +864,9 @@ class _PracticeScreenState extends State<PracticeScreen>
   void _toggleMute() async {
     if (_isFinished) return;
 
-    WakelockPlus.enable().catchError((e) {
+    unawaited(WakelockPlus.enable().catchError((e) {
       debugPrint('[PracticeScreen] Error enabling Wakelock on Mute toggle: $e');
-    });
+    }));
 
     setState(() {
       _isMuted = !_isMuted;

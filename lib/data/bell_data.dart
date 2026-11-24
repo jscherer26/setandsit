@@ -1,7 +1,8 @@
 import '../models/audio_models.dart';
 
 class BellData {
-  static final List<AudioSegment> defaultBells = [
+  /// Immutable default acoustic bells catalog.
+  static final List<AudioSegment> defaultBells = List<AudioSegment>.unmodifiable([
     AudioSegment(
       id: 'bowl_singing',
       title: 'Singing Bowl',
@@ -92,5 +93,9 @@ class BellData {
       maxDelayBefore: 4,
       isEnabled: true,
     ),
-  ];
+  ]);
+
+  /// Returns a fresh mutable copy of [defaultBells] for per-controller isolation.
+  static List<AudioSegment> createDefaultBells() =>
+      List<AudioSegment>.from(defaultBells);
 }

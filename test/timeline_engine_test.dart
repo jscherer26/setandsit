@@ -7,6 +7,15 @@ import 'package:setandsit/services/audio_manifest_service.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
+  late AudioManifestService manifestService;
+  late SessionQueueEngine engine;
+
+  setUp(() async {
+    manifestService = AudioManifestService();
+    await manifestService.initialize();
+    engine = SessionQueueEngine(manifestService: manifestService);
+  });
+
   test('ClinicalArchetype pipelines match exact clinical specifications', () {
     expect(
       ClinicalArchetype.focusedCalm.pipeline.map((s) => s.code).toList(),
@@ -47,7 +56,7 @@ void main() {
 
   test('Silent session queue creates silence interval with closing bell (no opening bell)', () {
     final bell = BellData.defaultBells.first;
-    final queue = SessionQueueEngine.generateSilentSessionQueue(
+    final queue = engine.generateSilentSessionQueue(
       targetDurationSeconds: 600,
       selectedBell: bell,
     );
@@ -79,14 +88,14 @@ void main() {
     expect(manifest.scriptBank.containsKey('S01'), isTrue);
     expect(manifest.scriptBank['S01']!.first.text, 'Sample text');
 
-    final customVoicePath = AudioManifestService.getAudioAssetPath(
+    final customVoicePath = manifestService.getAudioAssetPath(
       voice: 'CustomVoice',
       segmentCode: 'S01',
       variantId: 'v01',
     );
     expect(customVoicePath, 'assets/audio/customvoice/S01_v01.mp3');
 
-    final gracePath = AudioManifestService.getAudioAssetPath(
+    final gracePath = manifestService.getAudioAssetPath(
       voice: 'Grace',
       segmentCode: 'S01',
       variantId: 'v01',
@@ -111,7 +120,7 @@ void main() {
 
   test('Guided session queue generates S16 with dual-player overlap bellAssetPath', () {
     final bell = BellData.defaultBells.first;
-    final queue = SessionQueueEngine.generateGuidedSessionQueue(
+    final queue = engine.generateGuidedSessionQueue(
       targetDurationSeconds: 600,
       archetype: ClinicalArchetype.focusedCalm,
       voicePersona: 'grace',
@@ -160,7 +169,7 @@ void main() {
 
     for (final targetSec in durationsToTest) {
       for (final arch in ClinicalArchetype.values) {
-        final queue = SessionQueueEngine.generateGuidedSessionQueue(
+        final queue = engine.generateGuidedSessionQueue(
           targetDurationSeconds: targetSec,
           archetype: arch,
           voicePersona: 'grace',
@@ -206,7 +215,7 @@ void main() {
       final arch = entry.key;
       final expectedSig = entry.value;
 
-      final queue = SessionQueueEngine.generateGuidedSessionQueue(
+      final queue = engine.generateGuidedSessionQueue(
         targetDurationSeconds: 60,
         archetype: arch,
         voicePersona: 'grace',
@@ -246,7 +255,7 @@ void main() {
     final bell = BellData.defaultBells.first;
 
     for (final arch in ClinicalArchetype.values) {
-      final queue = SessionQueueEngine.generateGuidedSessionQueue(
+      final queue = engine.generateGuidedSessionQueue(
         targetDurationSeconds: 180,
         archetype: arch,
         voicePersona: 'grace',
@@ -293,7 +302,7 @@ void main() {
     final bell = BellData.defaultBells.first;
 
     for (final arch in ClinicalArchetype.values) {
-      final queue = SessionQueueEngine.generateGuidedSessionQueue(
+      final queue = engine.generateGuidedSessionQueue(
         targetDurationSeconds: 300,
         archetype: arch,
         voicePersona: 'grace',
@@ -322,7 +331,7 @@ void main() {
 
   test('Progressive Settling Funnel and Re-Awakening Taper assign calibrated gaps at 900s', () {
     final bell = BellData.defaultBells.first;
-    final queue = SessionQueueEngine.generateGuidedSessionQueue(
+    final queue = engine.generateGuidedSessionQueue(
       targetDurationSeconds: 900,
       archetype: ClinicalArchetype.traumaInformed,
       voicePersona: 'grace',

@@ -6,14 +6,17 @@ import 'package:setandsit/models/voice_config.dart';
 import 'package:setandsit/screens/bell_configuration_screen.dart';
 import 'package:setandsit/screens/manage_voices_screen.dart';
 import 'package:setandsit/services/preferences_service.dart';
+import 'package:setandsit/shell/shared_preferences_key_value_store.dart';
 import 'package:setandsit/widgets/voice_stepper_card.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
+  late PreferencesService preferencesService;
+
   setUp(() async {
-    PreferencesService.resetCache();
     SharedPreferences.setMockInitialValues({});
-    await PreferencesService.init();
+    final store = await SharedPreferencesKeyValueStore.open();
+    preferencesService = PreferencesService(store);
   });
 
   test('Save and load state in PreferencesService with practiceMode', () async {
@@ -34,8 +37,8 @@ void main() {
       targetClockTimeIsAm: true,
     );
 
-    await PreferencesService.saveState(state);
-    final loaded = await PreferencesService.loadState();
+    await preferencesService.saveState(state);
+    final loaded = await preferencesService.loadState();
 
     expect(loaded.practiceDurationMinutes, 35);
     expect(loaded.instructionDensity, 4.0);
@@ -81,9 +84,11 @@ void main() {
     await tester.pump(const Duration(milliseconds: 100));
 
     // 2. Simulate app close and cold launch
-    final reloadedState = await PreferencesService.loadState();
-    final reloadedVoices = await PreferencesService.loadVoices();
-    final reloadedPractices = await PreferencesService.loadPractices();
+    final freshStore = await SharedPreferencesKeyValueStore.open();
+    final freshPrefs = PreferencesService(freshStore);
+    final reloadedState = await freshPrefs.loadState();
+    final reloadedVoices = await freshPrefs.loadVoices();
+    final reloadedPractices = await freshPrefs.loadPractices();
 
     await tester.pumpWidget(SetAndSitApp(
       initialState: reloadedState,
@@ -134,14 +139,16 @@ void main() {
     await tester.pump(const Duration(milliseconds: 50));
 
     // Check saved state
-    final saved = await PreferencesService.loadState();
+    final saved = await preferencesService.loadState();
     expect(saved.practiceMode, 'Silent');
     expect(saved.selectedVoiceId, 'grace');
 
     // 4. Simulate cold launch
-    final reloadedState = await PreferencesService.loadState();
-    final reloadedVoices = await PreferencesService.loadVoices();
-    final reloadedPractices = await PreferencesService.loadPractices();
+    final freshStore = await SharedPreferencesKeyValueStore.open();
+    final freshPrefs = PreferencesService(freshStore);
+    final reloadedState = await freshPrefs.loadState();
+    final reloadedVoices = await freshPrefs.loadVoices();
+    final reloadedPractices = await freshPrefs.loadPractices();
 
     await tester.pumpWidget(SetAndSitApp(
       initialState: reloadedState,
@@ -225,14 +232,15 @@ void main() {
     final prefs = await SharedPreferences.getInstance();
     const legacyJson =
         '[{"id":"kia","name":"Kia","description":"Warm & Grounded","gender":"Male","isSystem":true,"isIncluded":true,"assetFolder":"assets/audio/voices/kia"},{"id":"grace","name":"Grace","description":"Soft & Centered","gender":"Female","isSystem":true,"isIncluded":true,"assetFolder":"assets/audio/voices/grace"}]';
-    await prefs.setString('pref_voices_list', legacyJson);
+    await prefs.setString('set_and_sit_voices', legacyJson);
     await prefs.setString('pref_selected_voice_id', 'kia');
 
-    final voices = await PreferencesService.loadVoices();
+    final voices = await preferencesService.loadVoices();
     expect(voices.any((v) => v.id == 'kia'), isFalse);
     expect(voices.any((v) => v.id == 'grace'), isTrue);
+    expect(prefs.getString('set_and_sit_voices'), isNot(contains('"kia"')));
 
-    final state = await PreferencesService.loadState();
+    final state = await preferencesService.loadState();
     expect(state.selectedVoiceId, 'grace');
   });
 
@@ -244,11 +252,11 @@ void main() {
     await prefs.setString('pref_selected_practice_name', 'Trauma-Informed Regulation');
     await prefs.setString('pref_selected_practice_id', 'trauma_informed');
 
-    final practices = await PreferencesService.loadPractices();
+    final practices = await preferencesService.loadPractices();
     final ti = practices.firstWhere((p) => p.id == 'trauma_informed');
     expect(ti.name, 'Trauma-Sensitive Grounding');
 
-    final state = await PreferencesService.loadState();
+    final state = await preferencesService.loadState();
     expect(state.selectedPractice, 'Trauma-Sensitive Grounding');
   });
 }

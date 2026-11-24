@@ -1,25 +1,40 @@
+import 'dart:async';
 import 'package:material_ui/material_ui.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../models/host_options.dart';
 import '../theme/app_theme.dart';
 
 class AboutScreen extends StatefulWidget {
   final VoidCallback onBack;
+  final SetAndSitAboutInfo? aboutInfo;
 
-  const AboutScreen({super.key, required this.onBack});
+  const AboutScreen({
+    super.key,
+    required this.onBack,
+    this.aboutInfo,
+  });
 
   @override
   State<AboutScreen> createState() => _AboutScreenState();
 }
 
 class _AboutScreenState extends State<AboutScreen> {
-  String _version = '0.1.0';
-  String _buildNumber = '1';
+  late String _appName;
+  late String _version;
+  late String _buildNumber;
+  late String _badgeLabel;
 
   @override
   void initState() {
     super.initState();
-    _loadPackageInfo();
+    _appName = widget.aboutInfo?.appName ?? 'Set&Sit';
+    _version = widget.aboutInfo?.version ?? '0.1.0';
+    _buildNumber = widget.aboutInfo?.buildNumber ?? '1';
+    _badgeLabel = widget.aboutInfo?.badgeLabel ?? 'Pre-Release';
+    if (widget.aboutInfo == null) {
+      unawaited(_loadPackageInfo());
+    }
   }
 
   Future<void> _loadPackageInfo() async {
@@ -124,7 +139,7 @@ class _AboutScreenState extends State<AboutScreen> {
                       ),
                       const SizedBox(height: 12),
                       Text(
-                        'Set&Sit',
+                        _appName,
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 26,
@@ -153,7 +168,7 @@ class _AboutScreenState extends State<AboutScreen> {
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
-                          'Pre-Release',
+                          _badgeLabel,
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
@@ -280,7 +295,7 @@ class _AboutScreenState extends State<AboutScreen> {
                   onTap: () {
                     showLicensePage(
                       context: context,
-                      applicationName: 'Set&Sit',
+                      applicationName: _appName,
                       applicationVersion: 'v$_version (Build $_buildNumber)',
                     );
                   },

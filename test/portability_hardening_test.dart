@@ -5,6 +5,7 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:setandsit/audio/bundled_audio_sources.dart';
 import 'package:setandsit/data/bell_data.dart';
 import 'package:setandsit/models/audio_models.dart';
 import 'package:setandsit/screens/practice_screen.dart';
@@ -161,6 +162,7 @@ void main() {
                   .firstWhere((b) => b.id == 'bell_meditation'),
               voicePlayer: voicePlayer,
               bellPlayer: bellPlayer,
+              audioSourceResolver: const BundledAudioSourceResolver(),
               onSessionComplete: () => completedCount++,
               onEndSession: () {},
             ),
@@ -225,6 +227,7 @@ void main() {
               selectedMeditationType: 'Focused Calm',
               voicePlayer: voicePlayer,
               bellPlayer: bellPlayer,
+              audioSourceResolver: const BundledAudioSourceResolver(),
               nowProvider: () => currentNow,
               onEndSession: () {},
             ),
@@ -301,6 +304,7 @@ void main() {
               selectedMeditationType: 'Focused Calm',
               voicePlayer: voicePlayer,
               bellPlayer: bellPlayer,
+              audioSourceResolver: const BundledAudioSourceResolver(),
               nowProvider: () => currentNow,
               onEndSession: () {},
             ),

@@ -3,30 +3,35 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:setandsit/main.dart';
 import 'package:setandsit/services/audio_manifest_service.dart';
 import 'package:setandsit/services/preferences_service.dart';
+import 'package:setandsit/shell/shared_preferences_key_value_store.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
+  late PreferencesService preferencesService;
+  late AudioManifestService manifestService;
+
   setUp(() async {
-    PreferencesService.resetCache();
     SharedPreferences.setMockInitialValues({});
-    await PreferencesService.init();
-    await AudioManifestService.initialize(developerMode: false);
+    final store = await SharedPreferencesKeyValueStore.open();
+    preferencesService = PreferencesService(store);
+    manifestService = AudioManifestService();
+    await manifestService.initialize(developerMode: false);
   });
 
   test('PreferencesService handles developer mode persistence', () async {
-    expect(await PreferencesService.isDeveloperMode(), isFalse);
+    expect(await preferencesService.isDeveloperMode(), isFalse);
 
-    await PreferencesService.setDeveloperMode(true);
-    expect(await PreferencesService.isDeveloperMode(), isTrue);
+    await preferencesService.setDeveloperMode(true);
+    expect(await preferencesService.isDeveloperMode(), isTrue);
 
-    await PreferencesService.setDeveloperMode(false);
-    expect(await PreferencesService.isDeveloperMode(), isFalse);
+    await preferencesService.setDeveloperMode(false);
+    expect(await preferencesService.isDeveloperMode(), isFalse);
   });
 
   test('AudioManifestService switches asset paths and durations with Developer Mode', () async {
     // 1. With developer mode OFF
-    AudioManifestService.setDeveloperMode(false);
-    final prodPath = AudioManifestService.getAudioAssetPath(
+    await manifestService.setDeveloperMode(false);
+    final prodPath = manifestService.getAudioAssetPath(
       voice: 'grace',
       segmentCode: 'S01',
       variantId: 'v08',
@@ -34,8 +39,8 @@ void main() {
     expect(prodPath, 'assets/audio/grace/S01_v08.mp3');
 
     // 2. With developer mode ON and staged mock changes
-    AudioManifestService.setDeveloperMode(true);
-    AudioManifestService.setMockStagedChanges({
+    await manifestService.setDeveloperMode(true);
+    manifestService.setMockStagedChanges({
       "variants": {
         "S01_v08": {
           "text": "Settling into your seat—giving yourself permission to transition out of doing mode, and gently leaning into being.",
@@ -47,7 +52,7 @@ void main() {
       }
     });
 
-    final stagedPath = AudioManifestService.getAudioAssetPath(
+    final stagedPath = manifestService.getAudioAssetPath(
       voice: 'grace',
       segmentCode: 'S01',
       variantId: 'v08',
@@ -55,7 +60,7 @@ void main() {
     expect(stagedPath, 'assets/audio/grace/changes/S01_v08.mp3');
 
     // Staged duration for S01_v08 grace should be 8.75
-    final dur = AudioManifestService.getAudioDuration(
+    final dur = manifestService.getAudioDuration(
       voice: 'grace',
       segmentCode: 'S01',
       variantId: 'v08',
@@ -63,7 +68,7 @@ void main() {
     expect(dur, 8.75);
 
     // Staged text override check
-    final variants = AudioManifestService.getVariantsForSegment('S01');
+    final variants = manifestService.getVariantsForSegment('S01');
     final v08 = variants.firstWhere((v) => v.variantId == 'v08');
     expect(v08.text, contains('Settling into your seat'));
   });
